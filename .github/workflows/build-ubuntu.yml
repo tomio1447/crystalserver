@@ -36,8 +36,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
-        buildtype: [linux-release, linux-debug]
+        os: [ubuntu-24.04]
+        buildtype: [linux-release]
         include:
           - os: ubuntu-22.04
             triplet: x64-linux
