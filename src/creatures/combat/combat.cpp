@@ -2702,16 +2702,17 @@ void Combat::applyExtensions(const std::shared_ptr<Creature> &caster, const std:
 
 		// Bonus Fatal - Tier
 		bool canApplyFatal = false;
+		double fatalChance = 0;
 		if (const auto &playerWeapon = player->getInventoryItem(CONST_SLOT_LEFT); playerWeapon && playerWeapon->getTier() > 0) {
-			double fatalChance = playerWeapon->getFatalChance();
-			if (const auto &playerBoots = player->getInventoryItem(CONST_SLOT_FEET); playerBoots && playerBoots->getTier() > 0) {
-				double amplifiedChance = playerBoots->getAmplificationChance();
-				fatalChance *= (amplifiedChance / 100.0) + 1.0;
-			}
-
-			double randomRoll = uniform_random(1, 100) / 1.0;
-			canApplyFatal = (fatalChance > 0 && randomRoll < fatalChance);
+			fatalChance = playerWeapon->getFatalChance();
 		}
+		double amplifiedChance = player->getWarForgeChance();
+		if (const auto &playerBoots = player->getInventoryItem(CONST_SLOT_FEET); playerBoots && playerBoots->getTier() > 0) {
+			amplifiedChance += playerBoots->getAmplificationChance();
+		}
+		fatalChance = fatalChance * ((amplifiedChance / 100.0) + 1.0) + player->getWarForgeChance();
+		double randomRoll = uniform_random(1, 10000) / 100.0;
+		canApplyFatal = (fatalChance > 0 && randomRoll < fatalChance);
 
 		// Bonus Low Blow Charm
 		int32_t criticalHitLowBlowChance = 0;

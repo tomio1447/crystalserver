@@ -1,4 +1,4 @@
-local commands = TalkAction("!commands")
+local commands = TalkAction("!commands", "!comandos")
 
 function commands.onSay(player, words, param)
 	local allTalkActions = Game.getTalkActions()

@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("The Primal Menace")
+﻿local mType = Game.createMonsterType("The Primal Menace")
 local monster = {}
 
 local thePrimalMenaceConfig = {
@@ -73,8 +73,8 @@ monster.bosstiary = {
 	bossRace = RARITY_ARCHFOE,
 }
 
-monster.health = 400000
-monster.maxHealth = 400000
+monster.health = 5000
+monster.maxHealth = 5000
 monster.race = "venom"
 monster.corpse = 39530
 monster.speed = 180
@@ -222,7 +222,7 @@ local function getSpawnPosition(monster)
 
 		local positionAttempt = Position(xCoord, yCoord, centerPos.z)
 		local spawnTile = Tile(positionAttempt)
-		if spawnTile and spawnTile:getCreatureCount() == 0 and not spawnTile:hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID) then
+		if spawnTile and spawnTile:getCreatureCount() == 0 and not spawnTile:hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID) and not spawnTile:hasFlag(TILESTATE_PROTECTIONZONE) then
 			spawnPosition = positionAttempt
 		end
 		attempt = attempt + 1
@@ -338,6 +338,19 @@ end
 mType.onThink = function(monster, interval)
 	if monster:getStorageValue(thePrimalMenaceConfig.Storage.Initialized) == -1 then
 		initialize(monster)
+	end
+
+	-- Pause mechanics when no player is around/in the room
+	local spectators = Game.getSpectators(monster:getPosition(), false, true, 12, 12, 12, 12)
+	local playerFound = false
+	for _, spec in ipairs(spectators) do
+		if spec:isPlayer() then
+			playerFound = true
+			break
+		end
+	end
+	if not playerFound then
+		return
 	end
 
 	local hazardPoints = getHazardPoints(monster)

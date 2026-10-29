@@ -366,6 +366,9 @@ void PlayerFunctions::init(lua_State* L) {
 	Lua::registerMethod(L, "Player", "hasChaseMode", PlayerFunctions::luaPlayerHasChaseMode);
 	Lua::registerMethod(L, "Player", "hasSecureMode", PlayerFunctions::luaPlayerHasSecureMode);
 	Lua::registerMethod(L, "Player", "getFightMode", PlayerFunctions::luaPlayerGetFightMode);
+	Lua::registerMethod(L, "Player", "isBot", PlayerFunctions::luaPlayerIsBot);
+	Lua::registerMethod(L, "Player", "setBot", PlayerFunctions::luaPlayerSetBot);
+	Lua::registerMethod(L, "Player", "setChaseMode", PlayerFunctions::luaPlayerSetChaseMode);
 
 	Lua::registerMethod(L, "Player", "getBaseXpGain", PlayerFunctions::luaPlayerGetBaseXpGain);
 	Lua::registerMethod(L, "Player", "setBaseXpGain", PlayerFunctions::luaPlayerSetBaseXpGain);
@@ -410,6 +413,12 @@ void PlayerFunctions::init(lua_State* L) {
 	Lua::registerMethod(L, "Player", "addForgeDustLevel", PlayerFunctions::luaPlayerAddForgeDustLevel);
 	Lua::registerMethod(L, "Player", "removeForgeDustLevel", PlayerFunctions::luaPlayerRemoveForgeDustLevel);
 	Lua::registerMethod(L, "Player", "getForgeDustLevel", PlayerFunctions::luaPlayerGetForgeDustLevel);
+
+	Lua::registerMethod(L, "Player", "getWarLifetimeFrags", PlayerFunctions::luaPlayerGetWarLifetimeFrags);
+	Lua::registerMethod(L, "Player", "addWarLifetimeFrag", PlayerFunctions::luaPlayerAddWarLifetimeFrag);
+	Lua::registerMethod(L, "Player", "getWarDeaths", PlayerFunctions::luaPlayerGetWarDeaths);
+	Lua::registerMethod(L, "Player", "addWarDeath", PlayerFunctions::luaPlayerAddWarDeath);
+	Lua::registerMethod(L, "Player", "getWarRankPoints", PlayerFunctions::luaPlayerGetWarRankPoints);
 
 	Lua::registerMethod(L, "Player", "getForgeSlivers", PlayerFunctions::luaPlayerGetForgeSlivers);
 	Lua::registerMethod(L, "Player", "getForgeCores", PlayerFunctions::luaPlayerGetForgeCores);
@@ -4285,6 +4294,41 @@ int PlayerFunctions::luaPlayerHasSecureMode(lua_State* L) {
 	return 1;
 }
 
+int PlayerFunctions::luaPlayerIsBot(lua_State* L) {
+	// player:isBot()
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	if (player) {
+		Lua::pushBoolean(L, player->isBot());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerSetBot(lua_State* L) {
+	// player:setBot(value)
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	if (player) {
+		player->setBot(Lua::getBoolean(L, 2, false));
+		Lua::pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerSetChaseMode(lua_State* L) {
+	// player:setChaseMode(mode)
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	if (player) {
+		player->setChaseMode(Lua::getBoolean(L, 2, false));
+		Lua::pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
 int PlayerFunctions::luaPlayerGetFightMode(lua_State* L) {
 	// player:getFightMode()
 	const auto &player = Lua::getUserdataShared<Player>(L, 1);
@@ -4621,6 +4665,58 @@ int PlayerFunctions::luaPlayerGetForgeDustLevel(lua_State* L) {
 	}
 
 	lua_pushnumber(L, static_cast<lua_Number>(player->getForgeDustLevel()));
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerGetWarLifetimeFrags(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	if (!player) {
+		Lua::reportErrorFunc(Lua::getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
+		return 0;
+	}
+
+	lua_pushnumber(L, player->getWarLifetimeFrags());
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerAddWarLifetimeFrag(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	if (!player) {
+		Lua::reportErrorFunc(Lua::getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
+		return 0;
+	}
+
+	lua_pushnumber(L, player->addWarLifetimeFrag());
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerGetWarDeaths(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	if (!player) {
+		Lua::reportErrorFunc(Lua::getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
+		return 0;
+	}
+	lua_pushnumber(L, player->getWarDeaths());
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerAddWarDeath(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	if (!player) {
+		Lua::reportErrorFunc(Lua::getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
+		return 0;
+	}
+	lua_pushnumber(L, player->addWarDeath());
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerGetWarRankPoints(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	if (!player) {
+		Lua::reportErrorFunc(Lua::getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
+		return 0;
+	}
+	lua_pushnumber(L, player->getWarRankPoints());
 	return 1;
 }
 

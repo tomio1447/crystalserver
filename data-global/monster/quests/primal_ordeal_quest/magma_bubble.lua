@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("Magma Bubble")
+﻿local mType = Game.createMonsterType("Magma Bubble")
 local monster = {}
 
 monster.description = "magma bubble"
@@ -23,8 +23,8 @@ monster.bosstiary = {
 	bossRace = RARITY_ARCHFOE,
 }
 
-monster.health = 450000
-monster.maxHealth = 450000
+monster.health = 5000
+monster.maxHealth = 5000
 monster.race = "undead"
 monster.corpse = 36847
 monster.speed = 0

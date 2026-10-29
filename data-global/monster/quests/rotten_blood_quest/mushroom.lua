@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("Mushroom")
+﻿local mType = Game.createMonsterType("Mushroom")
 local monster = {}
 
 monster.description = "a mushroom"
@@ -98,77 +98,5 @@ monster.immunities = {
 	{ type = "invisible", condition = true },
 	{ type = "bleed", condition = false },
 }
-local area = {
-	{ 0, 0, 0, 0, 0, 0, 0 },
-	{ 0, 0, 1, 1, 1, 0, 0 },
-	{ 0, 1, 1, 1, 1, 1, 0 },
-	{ 0, 1, 1, 3, 1, 1, 0 },
-	{ 0, 1, 1, 1, 1, 1, 0 },
-	{ 0, 0, 1, 1, 1, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0 },
-}
-
-local visualCombat = Combat()
-visualCombat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_GREEN_RINGS)
-visualCombat:setArea(createCombatArea(area))
-
-local damageCombat = Combat()
-damageCombat:setParameter(COMBAT_PARAM_TYPE, COMBAT_LIFEDRAIN)
-damageCombat:setArea(createCombatArea(area))
-
-local function executeAreaEffect(monsterId)
-	local monster = Creature(monsterId)
-	if not monster then
-		return
-	end
-
-	local variant = Variant(monster:getPosition())
-	visualCombat:execute(monster, variant)
-
-	local targets = Game.getSpectators(monster:getPosition(), false, false, 3, 3, 3, 3)
-	for _, target in ipairs(targets) do
-		if target:isPlayer() or target:isMonster() then
-			doTargetCombatHealth(monster, target, COMBAT_LIFEDRAIN, -2500, -3000, CONST_ME_GREEN_RINGS)
-		end
-	end
-
-	monster:remove()
-end
-
-mType.onThink = function(monster, variant, interval)
-	local monsterPos = monster:getPosition()
-	local playersNearby = false
-	local nearbyCreatures = Game.getSpectators(monsterPos, false, true, 1, 1, 1, 1)
-
-	for _, creature in ipairs(nearbyCreatures) do
-		if creature:isPlayer() then
-			playersNearby = true
-			break
-		end
-	end
-
-	if playersNearby then
-		monster:getPosition():sendMagicEffect(CONST_ME_MAGIC_GREEN)
-		addEvent(executeAreaEffect, 1000, monster:getId())
-	end
-	addEvent(executeAreaEffect, 18000, monster:getId())
-
-	local spectators = Game.getSpectators(monsterPos, false, false, 15, 15, 15, 15)
-	local bossAlive = false
-
-	for _, creature in ipairs(spectators) do
-		if creature:isMonster() then
-			local name = creature:getName():lower()
-			if name == "murcion" or name == "ichgahal" or name == "bakragore" then
-				bossAlive = true
-				break
-			end
-		end
-	end
-
-	if not bossAlive then
-		monster:remove()
-	end
-end
 
 mType:register(monster)

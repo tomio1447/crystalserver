@@ -351,6 +351,9 @@ class PlayerFunctions {
 	static int luaPlayerHasChaseMode(lua_State* L);
 	static int luaPlayerHasSecureMode(lua_State* L);
 	static int luaPlayerGetFightMode(lua_State* L);
+	static int luaPlayerIsBot(lua_State* L);
+	static int luaPlayerSetBot(lua_State* L);
+	static int luaPlayerSetChaseMode(lua_State* L);
 
 	static int luaPlayerGetBaseXpGain(lua_State* L);
 	static int luaPlayerSetBaseXpGain(lua_State* L);
@@ -393,6 +396,12 @@ class PlayerFunctions {
 	static int luaPlayerAddForgeDustLevel(lua_State* L);
 	static int luaPlayerRemoveForgeDustLevel(lua_State* L);
 	static int luaPlayerGetForgeDustLevel(lua_State* L);
+
+	static int luaPlayerGetWarLifetimeFrags(lua_State* L);
+	static int luaPlayerAddWarLifetimeFrag(lua_State* L);
+	static int luaPlayerGetWarDeaths(lua_State* L);
+	static int luaPlayerAddWarDeath(lua_State* L);
+	static int luaPlayerGetWarRankPoints(lua_State* L);
 
 	static int luaPlayerGetForgeSlivers(lua_State* L);
 	static int luaPlayerGetForgeCores(lua_State* L);

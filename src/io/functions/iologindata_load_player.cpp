@@ -200,6 +200,8 @@ bool IOLoginDataLoad::loadPlayerBasicInfo(const std::shared_ptr<Player> &player,
 	player->addTaskHuntingPoints(result->getNumber<uint64_t>("task_points"));
 	player->addForgeDusts(result->getNumber<uint64_t>("forge_dusts"));
 	player->addForgeDustLevel(result->getNumber<uint64_t>("forge_dust_level"));
+	player->setWarLifetimeFrags(result->getNumber<uint32_t>("war_lifetime_frags"));
+	player->setWarDeaths(result->getNumber<uint32_t>("war_deaths"));
 	player->setRandomMount(static_cast<uint8_t>(result->getNumber<uint16_t>("randomize_mount")));
 	player->addBossPoints(result->getNumber<uint32_t>("boss_points"));
 	player->lastLoginSaved = result->getNumber<time_t>("lastlogin");

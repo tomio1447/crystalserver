@@ -58,6 +58,10 @@ private:
 	static int luaGameCreateSoulPitMonster(lua_State* L);
 	static int luaGameGenerateNpc(lua_State* L);
 	static int luaGameCreateNpc(lua_State* L);
+	static int luaGameCreateBot(lua_State* L);
+	static int luaGamePlayerSaySpell(lua_State* L);
+	static int luaGamePlayerUseWithCreature(lua_State* L);
+	static int luaGamePlayerUseItemEx(lua_State* L);
 	static int luaGameCreateTile(lua_State* L);
 
 	static int luaGameGetBestiaryCharm(lua_State* L);

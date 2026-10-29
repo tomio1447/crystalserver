@@ -20,9 +20,7 @@ monster.corpse = 0
 monster.speed = 80
 monster.manaCost = 0
 
-monster.events = {
-	"GreedMonsterDeath",
-}
+
 
 monster.changeTarget = {
 	interval = 4000,
@@ -88,19 +86,5 @@ monster.immunities = {
 	{ type = "invisible", condition = false },
 	{ type = "bleed", condition = false },
 }
-
-local transformTimeCount = 0
-mType.onThink = function(monster, interval)
-	transformTimeCount = transformTimeCount + interval
-	if transformTimeCount == 8000 then
-		Game.createMonster("Strong Soul", GreedMonsters[monster:getName()], true, false)
-		monster:remove()
-		transformTimeCount = 0
-	end
-end
-
-mType.onSpawn = function(monster)
-	transformTimeCount = 0
-end
 
 mType:register(monster)

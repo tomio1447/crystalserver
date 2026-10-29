@@ -1108,6 +1108,9 @@ double Creature::getDamageRatio(const std::shared_ptr<Creature> &attacker) const
 }
 
 uint64_t Creature::getGainedExperience(const std::shared_ptr<Creature> &attacker) const {
+	if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED) && getMonster()) {
+		return 0;
+	}
 	return std::floor(getDamageRatio(attacker) * getLostExperience());
 }
 

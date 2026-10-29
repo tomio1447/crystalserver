@@ -20,9 +20,7 @@ monster.corpse = 0
 monster.speed = 80
 monster.manaCost = 0
 
-monster.events = {
-	"GreedMonsterDeath",
-}
+
 
 monster.changeTarget = {
 	interval = 4000,
@@ -90,26 +88,5 @@ monster.immunities = {
 	{ type = "invisible", condition = false },
 	{ type = "bleed", condition = false },
 }
-
-local transformTimeCount = 0
-mType.onThink = function(monster, interval)
-	transformTimeCount = transformTimeCount + interval
-	if transformTimeCount == 8000 then
-		transformTimeCount = 0
-		local zone = Zone("boss.goshnar's-greed")
-		if zone then
-			local players = zone:getPlayers()
-			for _, player in ipairs(players) do
-				player:addHealth(-math.random(500, 1000))
-			end
-		end
-		CreateGoshnarsGreedMonster(monster:getName(), GreedMonsters[monster:getName()])
-		monster:remove()
-	end
-end
-
-mType.onSpawn = function(monster)
-	transformTimeCount = 0
-end
 
 mType:register(monster)

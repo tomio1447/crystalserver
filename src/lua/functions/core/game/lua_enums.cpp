@@ -275,6 +275,7 @@ void LuaEnums::initWorldTypeEnums(lua_State* L) {
 
 void LuaEnums::initAccountEnums(lua_State* L) {
 	registerEnum(L, ACCOUNT_TYPE_NORMAL);
+	registerEnum(L, ACCOUNT_TYPE_VIP);
 	registerEnum(L, ACCOUNT_TYPE_TUTOR);
 	registerEnum(L, ACCOUNT_TYPE_SENIORTUTOR);
 	registerEnum(L, ACCOUNT_TYPE_GAMEMASTER);

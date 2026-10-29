@@ -1,129 +1,71 @@
-local config = {
-	[VOCATION.ID.NONE] = {
-		container = {
-			{ 3003, 1 }, -- rope
-			{ 3457, 1 }, -- shovel
-		},
+local commonItems = {
+	{ 9596, 1 },
+	{ 3725, 100 },
+	{ 6432, 1 },
+}
+
+local vocationItems = {
+	[VOCATION.ID.MASTER_SORCERER] = {
+		{ 8864, 1 }, { 11687, 1 }, { 8090, 1 }, { 3079, 1 }, { 10387, 1 }, { 25700, 1 },
+		{ 23373, 1 }, { 3155, 1 }, { 3192, 1 }, { 3148, 1 }, { 3180, 1 }, { 3197, 1 },
 	},
-
-	[VOCATION.ID.SORCERER] = {
-		items = {
-			{ 3059, 1 }, -- spellbook
-			{ 3074, 1 }, -- wand of vortex
-			{ 7991, 1 }, -- magician's robe
-			{ 7992, 1 }, -- mage hat
-			{ 3362, 1 }, -- studded legs
-			{ 3552, 1 }, -- leather boots
-			{ 3572, 1 }, -- scarf
-		},
-
-		container = {
-			{ 3003, 1 }, -- rope
-			{ 5710, 1 }, -- light shovel
-			{ 268, 10 }, -- mana potion
-		},
+	[VOCATION.ID.ELDER_DRUID] = {
+		{ 8864, 1 }, { 11687, 1 }, { 8090, 1 }, { 3079, 1 }, { 10387, 1 }, { 25700, 1 },
+		{ 23373, 1 }, { 3155, 1 }, { 3192, 1 }, { 3148, 1 }, { 3180, 1 }, { 3197, 1 }, { 3165, 1 },
 	},
-
-	[VOCATION.ID.DRUID] = {
-		items = {
-			{ 3059, 1 }, -- spellbook
-			{ 3066, 1 }, -- snakebite rod
-			{ 7991, 1 }, -- magician's robe
-			{ 7992, 1 }, -- mage hat
-			{ 3362, 1 }, -- studded legs
-			{ 3552, 1 }, -- leather boots
-			{ 3572, 1 }, -- scarf
-		},
-
-		container = {
-			{ 3003, 1 }, -- rope
-			{ 5710, 1 }, -- light shovel
-			{ 268, 10 }, -- mana potion
-		},
+	[VOCATION.ID.ROYAL_PALADIN] = {
+		{ 11689, 1 }, { 8060, 1 }, { 8863, 1 }, { 3079, 1 }, { 8023, 1 }, { 16164, 1 }, { 35848, 1 }, { 3277, 1 },
+		{ 23374, 1 }, { 238, 1 }, { 25757, 1 }, { 25758, 1 }, { 3155, 1 },
 	},
-
-	[VOCATION.ID.PALADIN] = {
-		items = {
-			{ 3425, 1 }, -- dwarven shield
-			{ 3277, 1 }, -- spear
-			{ 3571, 1 }, -- ranger's cloak
-			{ 8095, 1 }, -- ranger legs
-			{ 3552, 1 }, -- leather boots
-			{ 3572, 1 }, -- scarf
-			{ 3374, 1 }, -- legion helmet
-		},
-
-		container = {
-			{ 3003, 1 }, -- rope
-			{ 5710, 1 }, -- light shovel
-			{ 266, 10 }, -- health potion
-			{ 3350, 1 }, -- bow
-			{ 3447, 50 }, -- 50 arrows
-		},
+	[VOCATION.ID.ELITE_KNIGHT] = {
+		{ 16175, 1 }, { 16161, 1 }, { 16162, 1 }, { 10385, 1 }, { 8862, 1 }, { 10387, 1 },
+		{ 4033, 1 }, { 11688, 1 }, { 238, 1 }, { 7643, 1 },
 	},
-
-	[VOCATION.ID.KNIGHT] = {
-		items = {
-			{ 3425, 1 }, -- dwarven shield
-			{ 7773, 1 }, -- steel axe
-			{ 3359, 1 }, -- brass armor
-			{ 3354, 1 }, -- brass helmet
-			{ 3372, 1 }, -- brass legs
-			{ 3552, 1 }, -- leather boots
-			{ 3572, 1 }, -- scarf
-		},
-
-		container = {
-			{ 7774, 1 }, -- jagged sword
-			{ 3327, 1 }, -- daramanian mace
-			{ 3003, 1 }, -- rope
-			{ 5710, 1 }, -- light shovel
-			{ 266, 10 }, -- health potion
-		},
-	},
-
-	[VOCATION.ID.MONK] = {
-		items = {
-			{ 50171, 1 }, -- jo staff
-			{ 3359, 1 }, -- brass armor
-			{ 3354, 1 }, -- brass helmet
-			{ 3372, 1 }, -- brass legs
-			{ 3552, 1 }, -- leather boots
-			{ 3572, 1 }, -- scarf
-		},
-
-		container = {
-			{ 3425, 1 }, -- dwarven shield
-			{ 3003, 1 }, -- rope
-			{ 5710, 1 }, -- light shovel
-			{ 266, 10 }, -- health potion
-		},
+	[VOCATION.ID.EXALTED_MONK] = {
+		{ 50267, 1 }, { 50274, 1 }, { 50271, 1 }, { 50269, 1 }, { 50273, 1 }, { 50268, 1 },
+		{ 50272, 1 }, { 50195, 1 }, { 50166, 1 }, { 50171, 1 }, { 23374, 1 }, { 238, 1 },
 	},
 }
+
+local function unlockMonkPath(player)
+	local quest = player:questKV("the_way_of_the_monk_quest")
+	quest:set("questline", 4)
+	quest:set("questlog", 4)
+	quest:set("boolPointsWheel", true)
+	local shrines = quest:scoped("mainShrines")
+	for _, shrine in ipairs({ "guidance", "tranquility", "respect", "legacy", "empathy", "harmony", "power", "knowledge", "serenity", "eternity" }) do
+		shrines:set(shrine, true)
+	end
+	player:setStorageValue(Storage.Quest.U15_00.TheWayOfTheMonk.Questline, 4)
+	player:setStorageValue(Storage.Quest.U15_00.TheWayOfTheMonk.Questlog, 4)
+end
 
 local sendFirstItems = CreatureEvent("SendFirstItems")
 
 function sendFirstItems.onLogin(player)
-	local targetVocation = config[player:getVocation():getId()]
-	if not targetVocation or player:getLastLoginSaved() ~= 0 then
+	if not WarSystem.isEnabled() or player:getLastLoginSaved() ~= 0 then
 		return true
 	end
 
-	if targetVocation.items then
-		for i = 1, #targetVocation.items do
-			player:addItem(targetVocation.items[i][1], targetVocation.items[i][2])
-		end
+	local items = vocationItems[player:getVocation():getId()]
+	if not items then
+		return true
 	end
 
-	local backpack = player:addItem(2854)
+	local backpack = player:addItem(24395)
 	if not backpack then
 		return true
 	end
 
-	if targetVocation.container then
-		for i = 1, #targetVocation.container do
-			backpack:addItem(targetVocation.container[i][1], targetVocation.container[i][2])
-		end
+	for _, entry in ipairs(commonItems) do
+		backpack:addItem(entry[1], entry[2])
+	end
+	for _, entry in ipairs(items) do
+		player:addItem(entry[1], entry[2], false)
+	end
+
+	if player:getVocation():getId() == VOCATION.ID.EXALTED_MONK then
+		unlockMonkPath(player)
 	end
 	return true
 end

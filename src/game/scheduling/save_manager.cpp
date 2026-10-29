@@ -84,6 +84,9 @@ void SaveManager::scheduleAll() {
 	std::vector<std::shared_ptr<Player>> playersToSave;
 	playersToSave.reserve(game.getPlayersOnline());
 	for (const auto &[_, player] : game.getPlayers()) {
+		if (player->isBot()) {
+			continue;
+		}
 		playersToSave.push_back(player);
 	}
 
@@ -168,6 +171,9 @@ bool SaveManager::doSavePlayer(std::shared_ptr<Player> player) {
 }
 
 bool SaveManager::savePlayer(std::shared_ptr<Player> player) {
+	if (!player || player->isBot()) {
+		return false;
+	}
 	if (player->isOnline() && g_game().getGameState() != GAME_STATE_SHUTDOWN) {
 		schedulePlayer(player);
 		return true;

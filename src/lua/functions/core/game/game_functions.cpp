@@ -18,7 +18,9 @@
 #include "lua/functions/core/game/game_functions.hpp"
 
 #include "core.hpp"
+#include "account/account.hpp"
 #include "lua/creature/actions.hpp"
+#include "creatures/combat/spells.hpp"
 #include "creatures/monsters/monster.hpp"
 #include "creatures/monsters/monsters.hpp"
 #include "creatures/npcs/npc.hpp"
@@ -76,6 +78,10 @@ void GameFunctions::init(lua_State* L) {
 	Lua::registerMethod(L, "Game", "createMonster", GameFunctions::luaGameCreateMonster);
 	Lua::registerMethod(L, "Game", "createSoulPitMonster", GameFunctions::luaGameCreateSoulPitMonster);
 	Lua::registerMethod(L, "Game", "createNpc", GameFunctions::luaGameCreateNpc);
+	Lua::registerMethod(L, "Game", "createBot", GameFunctions::luaGameCreateBot);
+	Lua::registerMethod(L, "Game", "playerSaySpell", GameFunctions::luaGamePlayerSaySpell);
+	Lua::registerMethod(L, "Game", "playerUseWithCreature", GameFunctions::luaGamePlayerUseWithCreature);
+	Lua::registerMethod(L, "Game", "playerUseItemEx", GameFunctions::luaGamePlayerUseItemEx);
 	Lua::registerMethod(L, "Game", "generateNpc", GameFunctions::luaGameGenerateNpc);
 	Lua::registerMethod(L, "Game", "createTile", GameFunctions::luaGameCreateTile);
 	Lua::registerMethod(L, "Game", "createBestiaryCharm", GameFunctions::luaGameCreateBestiaryCharm);
@@ -701,6 +707,90 @@ int GameFunctions::luaGameCreateNpc(lua_State* L) {
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+int GameFunctions::luaGameCreateBot(lua_State* L) {
+	// Game.createBot(name, position[, extended = false[, force = false]])
+	// Creates a clientless real Player driven server-side (war bots)
+	const auto &player = std::make_shared<Player>(nullptr);
+	player->setBot(true);
+	player->setName(Lua::getString(L, 1));
+
+	static uint32_t botGuidCounter = 0x0F000000;
+	player->setGUID(++botGuidCounter);
+	if (const auto &group = g_game().groups.getGroup(1)) {
+		player->setGroup(group);
+	}
+	// detached account (in-memory only) so premium/account accessors don't hit a null shared_ptr
+	player->setAccount(0);
+	if (const auto &account = player->getAccount()) {
+		account->addPremiumDays(365);
+	}
+
+	const Position &position = Lua::getPosition(L, 2);
+	const bool extended = Lua::getBoolean(L, 3, false);
+	const bool force = Lua::getBoolean(L, 4, false);
+	const bool placed = g_game().placeCreature(player, position, extended, force);
+	if (placed) {
+		// ensure the bot keeps thinking even without player spectators nearby
+		g_game().addCreatureCheck(player);
+			Lua::pushUserdata<Player>(L, player);
+		Lua::setMetatable(L, -1, "Player");
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int GameFunctions::luaGamePlayerSaySpell(lua_State* L) {
+	// Game.playerSaySpell(player, text)
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	std::string words = Lua::getString(L, 2);
+	const std::string &lowerWords = asLowerCaseString(words);
+	const TalkActionResult_t result = g_spells().playerSaySpell(player, words, lowerWords);
+	if (result == TALKACTION_BREAK) {
+		player->saySpell(TALKTYPE_SAY, words, false);
+	}
+	Lua::pushBoolean(L, result != TALKACTION_FAILED);
+	return 1;
+}
+
+int GameFunctions::luaGamePlayerUseWithCreature(lua_State* L) {
+	// Game.playerUseWithCreature(player, fromPos, fromStackPos, itemId, creature)
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	const auto &creature = Lua::getCreature(L, 5);
+	if (!player || !creature) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const Position &fromPos = Lua::getPosition(L, 2);
+	const uint8_t fromStackPos = Lua::getNumber<uint8_t>(L, 3, 0);
+	const uint16_t itemId = Lua::getNumber<uint16_t>(L, 4);
+	g_game().playerUseWithCreature(player->getID(), fromPos, fromStackPos, creature->getID(), itemId);
+	Lua::pushBoolean(L, true);
+	return 1;
+}
+
+int GameFunctions::luaGamePlayerUseItemEx(lua_State* L) {
+	// Game.playerUseItemEx(player, fromPos, fromStackPos, itemId, toPos[, toStackPos = 0[, toItemId = 0]])
+	const auto &player = Lua::getUserdataShared<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const Position &fromPos = Lua::getPosition(L, 2);
+	const uint8_t fromStackPos = Lua::getNumber<uint8_t>(L, 3, 0);
+	const uint16_t itemId = Lua::getNumber<uint16_t>(L, 4);
+	const Position &toPos = Lua::getPosition(L, 5);
+	const uint8_t toStackPos = Lua::getNumber<uint8_t>(L, 6, 0);
+	const uint16_t toItemId = Lua::getNumber<uint16_t>(L, 7, 0);
+	g_game().playerUseItemEx(player->getID(), fromPos, fromStackPos, itemId, toPos, toStackPos, toItemId);
+	Lua::pushBoolean(L, true);
 	return 1;
 }
 

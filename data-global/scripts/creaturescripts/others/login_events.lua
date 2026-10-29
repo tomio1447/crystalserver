@@ -7,6 +7,9 @@ function loginEvents.onLogin(player)
 		"HealthPillar",
 		"YalahariHealth",
 		"RottenBloodLogin",
+		--Warizi
+		"WariziComboSession",
+		"WariziComboLogout",
 	}
 
 	for i = 1, #events do

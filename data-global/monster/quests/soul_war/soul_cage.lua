@@ -35,10 +35,7 @@ monster.flags = {
 	isBlockable = false,
 }
 
-monster.events = {
-	"SoulCageDeath",
-	"SoulCageHealthChange",
-}
+monster.events = {}
 
 monster.light = {
 	level = 0,

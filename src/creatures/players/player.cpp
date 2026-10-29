@@ -1384,7 +1384,7 @@ std::shared_ptr<KV> Player::kv() const {
 
 bool Player::canSee(const Position &pos) {
 	if (!client) {
-		return false;
+		return bot && Creature::canSee(pos);
 	}
 	return client->canSee(pos);
 }
@@ -2254,6 +2254,10 @@ void Player::removeMagicEffect(const Position &pos, uint16_t type) const {
 }
 
 void Player::sendPing() {
+	if (bot) {
+		return;
+	}
+
 	const int64_t timeNow = OTSYS_TIME();
 
 	bool hasLostConnection = false;
@@ -2581,7 +2585,7 @@ void Player::onApplyImbuement(const Imbuement* imbuement, const std::shared_ptr<
 		return;
 	}
 
-	uint32_t price = baseImbuement->price;
+	uint32_t price = g_configManager().getBoolean(WAR_SYSTEM_ENABLED) ? 0 : baseImbuement->price;
 
 	if ((getMoney() + getBankBalance()) < price) {
 		const std::string &message = fmt::format("You don't have {} gold coins.", price);
@@ -2660,15 +2664,16 @@ void Player::onClearImbuement(const std::shared_ptr<Item> &item, uint8_t slot) {
 		return;
 	}
 
-	if (!g_game().removeMoney(static_self_cast<Player>(), baseImbuement->removeCost, 0, true)) {
-		const std::string message = fmt::format("You don't have {} gold coins.", baseImbuement->removeCost);
+	const uint32_t removeCost = g_configManager().getBoolean(WAR_SYSTEM_ENABLED) ? 0 : baseImbuement->removeCost;
+	if (!g_game().removeMoney(static_self_cast<Player>(), removeCost, 0, true)) {
+		const std::string message = fmt::format("You don't have {} gold coins.", removeCost);
 
 		g_logger().error("[Player::onClearImbuement] - An error occurred while player with name {} try to apply imbuement, player do not have money", this->getName());
 		this->sendImbuementResult(message);
 		this->openImbuementWindow(IMBUEMENT_WINDOW_CHOICE);
 		return;
 	}
-	g_metrics().addCounter("balance_decrease", baseImbuement->removeCost, { { "player", getName() }, { "context", "clear_imbuement" } });
+	g_metrics().addCounter("balance_decrease", removeCost, { { "player", getName() }, { "context", "clear_imbuement" } });
 
 	item->clearImbuement(slot, imbuementInfo.imbuement->getID());
 
@@ -4033,37 +4038,18 @@ void Player::death(const std::shared_ptr<Creature> &lastHitCreature) {
 		g_game().internalCreatureChangeOutfit(getPlayer(), defaultOutfit);
 	}
 
-	loginPosition = town->getTemplePosition();
+	if (town) {
+		loginPosition = town->getTemplePosition();
+	} else if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+		loginPosition = Position(1048, 1065, 10);
+	} else {
+		loginPosition = getTemplePosition();
+	}
 
 	g_game().sendSingleSoundEffect(static_self_cast<Player>()->getPosition(), sex == PLAYERSEX_FEMALE ? SoundEffect_t::HUMAN_FEMALE_DEATH : SoundEffect_t::HUMAN_MALE_DEATH, getPlayer());
 	if (skillLoss) {
-		int playerDmg = 0;
-		int othersDmg = 0;
-		uint32_t opponents = 0;
-		uint32_t inFightTicks = g_configManager().getNumber(FAIRFIGHT_TIMERANGE);
-		for (const auto &[creatureId, damageInfo] : damageMap) {
-			const auto &[total, ticks] = damageInfo;
-			if ((OTSYS_TIME() - ticks) <= inFightTicks) {
-				const auto &damageDealer = g_game().getPlayerByID(creatureId);
-				if (damageDealer) {
-					playerDmg += total;
-					opponents += damageDealer->getLevel();
-				} else {
-					othersDmg += total;
-				}
-			}
-		}
-
 		bool pvpDeath = false;
-		if (playerDmg > 0 || othersDmg > 0) {
-			pvpDeath = (Player::lastHitIsPlayer(lastHitCreature) || playerDmg / (playerDmg + static_cast<double>(othersDmg)) >= 0.05);
-		}
-
-		uint8_t unfairFightReduction = 100;
-		if (pvpDeath && opponents > level) {
-			double reduce = level / static_cast<double>(opponents);
-			unfairFightReduction = std::max<uint8_t>(20, std::floor((reduce * 100) + 0.5));
-		}
+		const uint8_t unfairFightReduction = getUnfairFightReduction(lastHitCreature, pvpDeath);
 
 		// Magic level loss
 		uint64_t sumMana = 0;
@@ -4092,7 +4078,9 @@ void Player::death(const std::shared_ptr<Creature> &lastHitCreature) {
 		}
 
 		double magicLossPercent = deathLossPercent / 100.;
-		if (g_configManager().getBoolean(HALF_LOSS_MAGIC) && magicLossPercent > 0) {
+		if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+			magicLossPercent *= g_configManager().getFloat(WAR_SKILL_LOSS_MULTIPLIER);
+		} else if (g_configManager().getBoolean(HALF_LOSS_MAGIC) && magicLossPercent > 0) {
 			magicLossPercent /= 2;
 		}
 
@@ -4120,6 +4108,10 @@ void Player::death(const std::shared_ptr<Creature> &lastHitCreature) {
 		}
 
 		auto expLoss = static_cast<uint64_t>(std::ceil((experience * expLossPercent)));
+		if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+			const auto minimumExperience = Player::getExpForLevel(g_configManager().getNumber(WAR_MIN_LEVEL));
+			expLoss = experience > minimumExperience ? std::min(expLoss, experience - minimumExperience) : 0;
+		}
 		g_logger().debug("[{}] - experience lost {}", __FUNCTION__, expLoss);
 
 		g_events().eventPlayerOnLoseExperience(static_self_cast<Player>(), expLoss);
@@ -4139,7 +4131,9 @@ void Player::death(const std::shared_ptr<Creature> &lastHitCreature) {
 			sumSkillTries += skills[i].tries;
 
 			double skillLossPercent = deathLossPercent / 100.;
-			if (g_configManager().getBoolean(HALF_LOSS_SKILL) && skillLossPercent > 0) {
+			if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+				skillLossPercent *= g_configManager().getFloat(WAR_SKILL_LOSS_MULTIPLIER);
+			} else if (g_configManager().getBoolean(HALF_LOSS_SKILL) && skillLossPercent > 0) {
 				skillLossPercent /= 2;
 			}
 
@@ -4222,33 +4216,35 @@ void Player::death(const std::shared_ptr<Creature> &lastHitCreature) {
 			const auto &amulet = getInventoryItem(CONST_SLOT_NECKLACE);
 			const bool usingAol = amulet && amulet->getID() == ITEM_AMULETOFLOSS;
 			const bool twistProtectsAol = !hasSkull && pvpDeath && hasBlessing(1);
-			bool consumedBlessingProtection = false;
+			bool consumedBlessingProtection = g_configManager().getBoolean(WAR_SYSTEM_ENABLED);
 			uint8_t maxBlessing = 8;
-			if (twistProtectsAol) {
-				consumedBlessingProtection = true;
-				auto storeCount = getBlessingCount(1, true);
-				if (storeCount > 0) {
-					auto currentStore = kv()->scoped("summary")->scoped("blessings")->scoped(fmt::format("{}", 1))->get("amount");
-					if (currentStore) {
-						auto newAmount = std::max(0, static_cast<int>(currentStore->getNumber()) - 1);
-						kv()->scoped("summary")->scoped("blessings")->scoped(fmt::format("{}", 1))->set("amount", newAmount);
-					}
-				} else {
-					removeBlessing(1, 1);
-				}
-			} else {
-				for (int i = 2; i <= maxBlessing; i++) {
-					auto storeCount = getBlessingCount(i, true);
+			if (!consumedBlessingProtection) {
+				if (twistProtectsAol) {
+					consumedBlessingProtection = true;
+					auto storeCount = getBlessingCount(1, true);
 					if (storeCount > 0) {
-						consumedBlessingProtection = true;
-						auto currentStore = kv()->scoped("summary")->scoped("blessings")->scoped(fmt::format("{}", i))->get("amount");
+						auto currentStore = kv()->scoped("summary")->scoped("blessings")->scoped(fmt::format("{}", 1))->get("amount");
 						if (currentStore) {
 							auto newAmount = std::max(0, static_cast<int>(currentStore->getNumber()) - 1);
-							kv()->scoped("summary")->scoped("blessings")->scoped(fmt::format("{}", i))->set("amount", newAmount);
+							kv()->scoped("summary")->scoped("blessings")->scoped(fmt::format("{}", 1))->set("amount", newAmount);
 						}
-					} else if (hasBlessing(i)) {
-						consumedBlessingProtection = true;
-						removeBlessing(i, 1);
+					} else {
+						removeBlessing(1, 1);
+					}
+				} else {
+					for (int i = 2; i <= maxBlessing; i++) {
+						auto storeCount = getBlessingCount(i, true);
+						if (storeCount > 0) {
+							consumedBlessingProtection = true;
+							auto currentStore = kv()->scoped("summary")->scoped("blessings")->scoped(fmt::format("{}", i))->get("amount");
+							if (currentStore) {
+								auto newAmount = std::max(0, static_cast<int>(currentStore->getNumber()) - 1);
+								kv()->scoped("summary")->scoped("blessings")->scoped(fmt::format("{}", i))->set("amount", newAmount);
+							}
+						} else if (hasBlessing(i)) {
+							consumedBlessingProtection = true;
+							removeBlessing(i, 1);
+						}
 					}
 				}
 			}
@@ -6122,7 +6118,47 @@ void Player::getPathSearchParams(const std::shared_ptr<Creature> &creature, Find
 uint64_t Player::getGainedExperience(const std::shared_ptr<Creature> &attacker) const {
 	if (g_configManager().getBoolean(EXPERIENCE_FROM_PLAYERS)) {
 		const auto &attackerPlayer = attacker->getPlayer();
-		if (attackerPlayer && attackerPlayer.get() != this && skillLoss && std::abs(static_cast<int32_t>(attackerPlayer->getLevel() - level)) <= g_configManager().getNumber(EXP_FROM_PLAYERS_LEVEL_RANGE)) {
+		const bool validLevelRange = g_configManager().getBoolean(WAR_SYSTEM_ENABLED) || std::abs(static_cast<int32_t>(attackerPlayer ? attackerPlayer->getLevel() : 0) - static_cast<int32_t>(level)) <= g_configManager().getNumber(EXP_FROM_PLAYERS_LEVEL_RANGE);
+		if (attackerPlayer && attackerPlayer.get() != this && skillLoss && validLevelRange) {
+			if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+				bool pvpDeath = false;
+				const auto &lastHitCreature = g_game().getCreatureByID(lastHitCreatureId);
+				const uint8_t unfairFightReduction = getUnfairFightReduction(lastHitCreature, pvpDeath);
+				const double expLossPercent = getLostPercent() * (unfairFightReduction / 100.) / 100.;
+				auto lostExperience = static_cast<uint64_t>(std::ceil(experience * expLossPercent));
+				const auto minimumExperience = Player::getExpForLevel(g_configManager().getNumber(WAR_MIN_LEVEL));
+				if (experience > minimumExperience) {
+					lostExperience = std::min<uint64_t>(lostExperience, experience - minimumExperience);
+				}
+				uint32_t lossReduction = 0;
+				if (getWarRankPoints() >= static_cast<uint32_t>(g_configManager().getNumber(WAR_YELLOW_SKULL_FRAGS))) {
+					lossReduction += 10;
+				}
+				if (getWarRankPoints() >= static_cast<uint32_t>(g_configManager().getNumber(WAR_BLACK_SKULL_FRAGS))) {
+					lossReduction += 2;
+				}
+				lostExperience = lostExperience * (100 - lossReduction) / 100;
+				uint64_t attackerDamage = 0;
+				uint64_t eligibleDamage = 0;
+				uint32_t inFightTicks = g_configManager().getNumber(FAIRFIGHT_TIMERANGE);
+				for (const auto &[creatureId, damageInfo] : damageMap) {
+					const auto &[total, ticks] = damageInfo;
+					if (creatureId == 0 || total == 0 || creatureId == getID() || (OTSYS_TIME() - ticks) > inFightTicks) {
+						continue;
+					}
+					const auto &dealer = g_game().getCreatureByID(creatureId);
+					const bool playerDealer = dealer && (dealer->getPlayer() || (dealer->getMaster() && dealer->getMaster()->getPlayer()));
+					if (!playerDealer) {
+						continue;
+					}
+					eligibleDamage += total;
+					if (creatureId == attacker->getID() || (attacker->getMaster() && dealer->getID() == attacker->getMaster()->getID()) || (dealer->getMaster() && dealer->getMaster()->getID() == attacker->getID())) {
+						attackerDamage += total;
+					}
+				}
+				const double pvpDamageRatio = eligibleDamage > 0 ? static_cast<double>(attackerDamage) / eligibleDamage : getDamageRatio(attacker);
+				return std::floor(lostExperience * pvpDamageRatio);
+			}
 			return std::max<uint64_t>(0, std::floor(getLostExperience() * getDamageRatio(attacker) * 0.75));
 		}
 	}
@@ -6447,6 +6483,11 @@ void Player::onIdleStatus() {
 }
 
 void Player::onPlacedCreature() {
+	if (bot) {
+		// bots have no login lifecycle or client; skip login scripts entirely
+		return;
+	}
+
 	// scripting event - onLogin
 	if (!g_creatureEvents().playerLogin(static_self_cast<Player>())) {
 		removePlayer(true);
@@ -6669,6 +6710,37 @@ bool Player::lastHitIsPlayer(const std::shared_ptr<Creature> &lastHitCreature) {
 
 	const auto &lastHitMaster = lastHitCreature->getMaster();
 	return lastHitMaster && lastHitMaster->getPlayer();
+}
+
+uint8_t Player::getUnfairFightReduction(const std::shared_ptr<Creature> &lastHitCreature, bool &isPvpDeath) const {
+	int playerDmg = 0;
+	int othersDmg = 0;
+	uint32_t opponents = 0;
+	uint32_t inFightTicks = g_configManager().getNumber(FAIRFIGHT_TIMERANGE);
+	for (const auto &[creatureId, damageInfo] : damageMap) {
+		const auto &[total, ticks] = damageInfo;
+		if (creatureId == getID() || (OTSYS_TIME() - ticks) > inFightTicks) {
+			continue;
+		}
+		const auto &damageDealer = g_game().getPlayerByID(creatureId);
+		if (damageDealer) {
+			playerDmg += total;
+			opponents += damageDealer->getLevel();
+		} else {
+			othersDmg += total;
+		}
+	}
+
+	isPvpDeath = false;
+	if (playerDmg > 0 || othersDmg > 0) {
+		isPvpDeath = (Player::lastHitIsPlayer(lastHitCreature) || playerDmg / (playerDmg + static_cast<double>(othersDmg)) >= 0.05);
+	}
+
+	if (isPvpDeath && opponents > level) {
+		double reduce = level / static_cast<double>(opponents);
+		return std::max<uint8_t>(20, std::floor((reduce * 100) + 0.5));
+	}
+	return 100;
 }
 
 void Player::changeHealth(int32_t healthChange, bool sendHealthChange /* = true*/) {
@@ -7091,11 +7163,34 @@ Skulls_t Player::getSkull() const {
 }
 
 Skulls_t Player::getSkullClient(const std::shared_ptr<Creature> &creature) {
-	if (!creature || g_game().worlds().getCurrentWorld()->type != WORLDTYPE_OPEN) {
+	if (!creature) {
 		return SKULL_NONE;
 	}
 
 	const auto &player = creature->getPlayer();
+	if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED) && player) {
+		const auto frags = player->getWarRankPoints();
+		if (frags >= static_cast<uint32_t>(g_configManager().getNumber(WAR_BLACK_SKULL_FRAGS))) {
+			return SKULL_BLACK;
+		}
+		if (frags >= static_cast<uint32_t>(g_configManager().getNumber(WAR_RED_SKULL_FRAGS))) {
+			return SKULL_RED;
+		}
+		if (frags >= static_cast<uint32_t>(g_configManager().getNumber(WAR_ORANGE_SKULL_FRAGS))) {
+			return SKULL_ORANGE;
+		}
+		if (frags >= static_cast<uint32_t>(g_configManager().getNumber(WAR_YELLOW_SKULL_FRAGS))) {
+			return SKULL_YELLOW;
+		}
+		if (frags >= static_cast<uint32_t>(g_configManager().getNumber(WAR_WHITE_SKULL_FRAGS))) {
+			return SKULL_WHITE;
+		}
+		return SKULL_NONE;
+	}
+
+	if (g_game().worlds().getCurrentWorld()->type != WORLDTYPE_OPEN) {
+		return SKULL_NONE;
+	}
 	if (player && player->getSkull() == SKULL_NONE) {
 		if (player.get() == this) {
 			if (std::ranges::any_of(unjustifiedKills, [&](const auto &kill) {
@@ -7275,9 +7370,11 @@ uint32_t Player::getAttackSpeed() const {
 double Player::getLostPercent() const {
 	int32_t blessingCount = 0;
 	const uint8_t maxBlessing = (operatingSystem == CLIENTOS_NEW_WINDOWS || operatingSystem == CLIENTOS_NEW_MAC) ? 8 : 6;
-	for (int i = 2; i <= maxBlessing; i++) {
-		if (hasBlessing(i)) {
-			blessingCount++;
+	if (!g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+		for (int i = 2; i <= maxBlessing; i++) {
+			if (hasBlessing(i)) {
+				blessingCount++;
+			}
 		}
 	}
 
@@ -7502,7 +7599,7 @@ time_t Player::getPremiumLastDay() const {
 }
 
 bool Player::isVip() const {
-	return g_configManager().getBoolean(VIP_SYSTEM_ENABLED) && (getPremiumDays() > 0 || getPremiumLastDay() > getTimeNow());
+	return getAccountType() == ACCOUNT_TYPE_VIP;
 }
 
 void Player::setTibiaCoins(int32_t v) {
@@ -8603,6 +8700,9 @@ void Player::onThink(uint32_t interval) {
 	const auto &playerTile = getTile();
 	const bool vipStaysOnline = isVip() && g_configManager().getBoolean(VIP_STAY_ONLINE);
 	idleTime += interval;
+	if (bot) {
+		idleTime = 0;
+	}
 	if (playerTile && !playerTile->hasFlag(TILESTATE_NOLOGOUT) && !isAccessPlayer() && !isExerciseTraining() && !vipStaysOnline) {
 		const int32_t kickAfterMinutes = g_configManager().getNumber(KICK_AFTER_MINUTES);
 		if (idleTime > (kickAfterMinutes * 60000) + 60000) {
@@ -10426,20 +10526,13 @@ bool Player::isDead() const {
 
 void Player::triggerMomentum() {
 	const auto &item = getInventoryItem(CONST_SLOT_HEAD);
-	if (!item) {
-		return;
-	}
-
-	if (!item->getTier()) {
-		return;
-	}
-
-	double_t chance = item->getMomentumChance();
+	double_t chance = item && item->getTier() ? item->getMomentumChance() : 0;
 	const auto &playerBoots = getInventoryItem(CONST_SLOT_FEET);
+	double_t amplificationChange = getWarForgeChance();
 	if (playerBoots && playerBoots->getTier()) {
-		double_t amplificationChange = playerBoots->getAmplificationChance() / 100;
-		chance *= 1 + amplificationChange;
+		amplificationChange += playerBoots->getAmplificationChance();
 	}
+	chance = chance * (1 + amplificationChange / 100) + getWarForgeChance();
 
 	chance += m_wheelPlayer->getBonusData().momentum;
 	double_t randomChance = uniform_random(0, 10000) / 100.;
@@ -10495,20 +10588,13 @@ void Player::triggerTranscendence() {
 	}
 
 	const auto &item = getInventoryItem(CONST_SLOT_LEGS);
-	if (item == nullptr) {
-		return;
-	}
-
-	if (!item->getTier()) {
-		return;
-	}
-
-	double_t chance = item->getTranscendenceChance();
+	double_t chance = item && item->getTier() ? item->getTranscendenceChance() : 0;
 	const auto &playerBoots = getInventoryItem(CONST_SLOT_FEET);
+	double_t amplificationChange = getWarForgeChance();
 	if (playerBoots && playerBoots->getTier()) {
-		double_t amplificationChange = playerBoots->getAmplificationChance() / 100;
-		chance *= 1 + amplificationChange;
+		amplificationChange += playerBoots->getAmplificationChance();
 	}
+	chance = chance * (1 + amplificationChange / 100) + getWarForgeChance();
 
 	const double_t randomChance = uniform_random(0, 10000) / 100.;
 	if (getZoneType() != ZONE_PROTECTION && checkLastAggressiveActionWithin(2000) && ((OTSYS_TIME() / 1000) % 2) == 0 && chance > 0 && randomChance < chance) {
@@ -10653,6 +10739,9 @@ void Player::forgeFuseItems(ForgeAction_t actionType, uint16_t firstItemId, uint
 			}
 			break;
 		}
+		if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+			cost = (cost + 1) / 2;
+		}
 		if (!g_game().removeMoney(static_self_cast<Player>(), cost, 0, true)) {
 			g_logger().error("[{}] Failed to remove {} gold from player with name {}", __FUNCTION__, cost, getName());
 			sendForgeError(RETURNVALUE_CONTACTADMINISTRATOR);
@@ -10706,6 +10795,9 @@ void Player::forgeFuseItems(ForgeAction_t actionType, uint16_t firstItemId, uint
 					}
 					cost = itemClassification->tiers.at(firstForgedItem->getTier()).regularPrice;
 					break;
+				}
+				if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+					cost = (cost + 1) / 2;
 				}
 				if (!g_game().removeMoney(static_self_cast<Player>(), cost, 0, true)) {
 					g_logger().error("[{}] Failed to remove {} gold from player with name {}", __FUNCTION__, cost, getName());
@@ -10780,6 +10872,9 @@ void Player::forgeFuseItems(ForgeAction_t actionType, uint16_t firstItemId, uint
 				cost = itemClassification->tiers.at(firstForgingItem->getTier() + 1).regularPrice;
 				break;
 			}
+			if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+				cost = (cost + 1) / 2;
+			}
 			if (!g_game().removeMoney(static_self_cast<Player>(), cost, 0, true)) {
 				g_logger().error("[{}] Failed to remove {} gold from player with name {}", __FUNCTION__, cost, getName());
 				sendForgeError(RETURNVALUE_CONTACTADMINISTRATOR);
@@ -10848,6 +10943,10 @@ void Player::forgeTransferItemTier(ForgeAction_t actionType, uint16_t donorItemI
 		cost = convergence ? tierPriecs.convergenceTransferPrice : tierPriecs.regularPrice;
 		coresAmount = tierPriecs.corePrice;
 		break;
+	}
+	if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+		cost = (cost + 1) / 2;
+		coresAmount = (coresAmount + 1) / 2;
 	}
 	if (coresAmount > 0) {
 		const auto &[sliverCountAvail, coreCountAvail] = getForgeSliversAndCores();
@@ -11083,6 +11182,41 @@ void Player::removeForgeDusts(uint64_t amount) {
 
 uint64_t Player::getForgeDusts() const {
 	return forgeDusts;
+}
+
+void Player::setWarLifetimeFrags(uint32_t amount) {
+	warLifetimeFrags = amount;
+}
+
+uint32_t Player::addWarLifetimeFrag() {
+	return ++warLifetimeFrags;
+}
+
+uint32_t Player::getWarLifetimeFrags() const {
+	return warLifetimeFrags;
+}
+
+void Player::setWarDeaths(uint32_t amount) {
+	warDeaths = amount;
+}
+
+uint32_t Player::addWarDeath() {
+	return ++warDeaths;
+}
+
+uint32_t Player::getWarDeaths() const {
+	return warDeaths;
+}
+
+uint32_t Player::getWarRankPoints() const {
+	return warLifetimeFrags > warDeaths ? warLifetimeFrags - warDeaths : 0;
+}
+
+double Player::getWarForgeChance() const {
+	if (!g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+		return 0;
+	}
+	return g_configManager().getFloat(WAR_BASE_FORGE_CHANCE) + (isVip() ? g_configManager().getFloat(WAR_VIP_FORGE_CHANCE_BONUS) : 0);
 }
 
 void Player::addForgeDustLevel(uint64_t amount) {
@@ -12187,16 +12321,13 @@ bool Player::hasPermittedConditionInPZ() const {
 
 uint16_t Player::getDodgeChance() const {
 	const auto &playerArmor = getInventoryItem(CONST_SLOT_ARMOR);
-	if (!playerArmor || !playerArmor->getTier()) {
-		return 0;
-	}
-
-	double chance = playerArmor->getDodgeChance();
+	double chance = playerArmor && playerArmor->getTier() ? playerArmor->getDodgeChance() : 0;
 	const auto &playerBoots = getInventoryItem(CONST_SLOT_FEET);
+	double amplification = getWarForgeChance();
 	if (playerBoots && playerBoots->getTier()) {
-		double amplification = playerBoots->getAmplificationChance() / 100.0;
-		chance *= (1.0 + amplification);
+		amplification += playerBoots->getAmplificationChance();
 	}
+	chance = chance * (1.0 + amplification / 100.0) + getWarForgeChance();
 
 	uint16_t finalChance = static_cast<uint16_t>(chance * 100.0);
 	finalChance += m_wheelPlayer->getStat(WheelStat_t::DODGE);
@@ -13198,7 +13329,10 @@ void Player::modifyWeaponProficiencySlot(const uint16_t itemId, const uint8_t pr
 		sendTextMessage(MESSAGE_FAILURE, "You cannot shape more than two perks on the same weapon.");
 		return;
 	}
-	const uint64_t cost = shapedCount == 0 ? MODIFY_FIRST_SLOT_DUST_COST : MODIFY_SECOND_SLOT_DUST_COST;
+	uint64_t cost = shapedCount == 0 ? MODIFY_FIRST_SLOT_DUST_COST : MODIFY_SECOND_SLOT_DUST_COST;
+	if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+		cost = (cost + 1) / 2;
+	}
 	if (getForgeDusts() < cost) {
 		sendTextMessage(MESSAGE_FAILURE, fmt::format("You need {} dust to shape this perk (you currently have {}).", cost, getForgeDusts()));
 		return;
@@ -13246,7 +13380,10 @@ void Player::refineWeaponProficiencySlot(const uint16_t itemId, const uint8_t pr
 		return;
 	}
 	// 15.30 (official refine costs): rank 1 costs 125 dust and every further rank 75 more (200, 275, ... 800 for rank 10).
-	const uint64_t refineCost = 125 + 75 * static_cast<uint64_t>(slot->value);
+	uint64_t refineCost = 125 + 75 * static_cast<uint64_t>(slot->value);
+	if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+		refineCost = (refineCost + 1) / 2;
+	}
 	if (getForgeDusts() < refineCost) {
 		sendTextMessage(MESSAGE_FAILURE, fmt::format("You need {} dust to refine this perk (you currently have {}).", refineCost, getForgeDusts()));
 		return;
@@ -13345,11 +13482,12 @@ void Player::reshapeWeaponProficiencySlot(const uint16_t itemId, const uint8_t p
 		sendTextMessage(MESSAGE_FAILURE, "That slot has not been modified yet.");
 		return;
 	}
-	if (getForgeDusts() < RESHAPE_DUST_COST) {
-		sendTextMessage(MESSAGE_FAILURE, fmt::format("You need {} dust to reshape this perk (you currently have {}).", RESHAPE_DUST_COST, getForgeDusts()));
+	const uint64_t reshapeCost = g_configManager().getBoolean(WAR_SYSTEM_ENABLED) ? (RESHAPE_DUST_COST + 1) / 2 : RESHAPE_DUST_COST;
+	if (getForgeDusts() < reshapeCost) {
+		sendTextMessage(MESSAGE_FAILURE, fmt::format("You need {} dust to reshape this perk (you currently have {}).", reshapeCost, getForgeDusts()));
 		return;
 	}
-	removeForgeDusts(RESHAPE_DUST_COST);
+	removeForgeDusts(reshapeCost);
 	proficiency.pendingReshapeLevel = storedLevel;
 	proficiency.pendingReshapePosition = storedPosition;
 	// Three distinct offers from this vocation's option list, never the perk already sitting in the slot.

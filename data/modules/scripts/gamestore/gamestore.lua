@@ -53,6 +53,138 @@ end
 -- }
 
 GameStore.Categories = {
+	{
+		icons = { "Category_Consumables.png" },
+		name = "Roulette",
+		rookgaard = true,
+		state = GameStore.States.STATE_NEW,
+		offers = {
+			{
+				icons = { "Tournament_Coin.png" },
+				name = "Roulette Coin",
+				price = 1,
+				itemtype = 3533,
+				count = 1,
+				description = "One black token to spin the boss roulette.",
+				type = GameStore.OfferTypes.OFFER_TYPE_STACKABLE,
+			},
+			{
+				icons = { "Tournament_Coin.png" },
+				name = "100x Roulette Coins",
+				price = 1,
+				itemtype = 3533,
+				count = 100,
+				description = "One hundred black tokens to spin the boss roulette.",
+				type = GameStore.OfferTypes.OFFER_TYPE_STACKABLE,
+			},
+		},
+	},
+	{
+		icons = { "Category_Consumables.png" },
+		name = "Frags Store",
+		rookgaard = true,
+		state = GameStore.States.STATE_NEW,
+		subclasses = { "Tokens", "Promotions Scrolls" },
+	},
+	{
+		icons = { "Category_Consumables.png" },
+		name = "Tokens",
+		parent = "Frags Store",
+		rookgaard = true,
+		state = GameStore.States.STATE_NEW,
+		offers = {
+			{
+				icons = { "Tournament_Coin.png" },
+				name = "Major Crystalline Tokens",
+				price = 1,
+				itemtype = 16129,
+				count = 2,
+				description = "Two major crystalline tokens for one Frag Coin.",
+				type = GameStore.OfferTypes.OFFER_TYPE_STACKABLE,
+			},
+			{
+				icons = { "Tournament_Coin.png" },
+				name = "Silver Token",
+				price = 1,
+				itemtype = 22516,
+				count = 1,
+				description = "One silver token for one Frag Coin.",
+				type = GameStore.OfferTypes.OFFER_TYPE_STACKABLE,
+			},
+			{
+				icons = { "Tournament_Coin.png" },
+				name = "Gold Token",
+				price = 3,
+				itemtype = 22721,
+				count = 1,
+				description = "One gold token for three Frag Coins.",
+				type = GameStore.OfferTypes.OFFER_TYPE_STACKABLE,
+			},
+			{
+				icons = { "Tournament_Coin.png" },
+				name = "Clusters of Solace",
+				price = 30,
+				itemtype = 20062,
+				count = 50,
+				description = "Fifty clusters of solace for thirty Frag Coins.",
+				type = GameStore.OfferTypes.OFFER_TYPE_STACKABLE,
+			},
+		},
+	},
+	{
+		icons = { "Promotions_Scroll.png" },
+		name = "Promotions Scrolls",
+		parent = "Frags Store",
+		rookgaard = true,
+		state = GameStore.States.STATE_NEW,
+		offers = {
+			{
+				icons = { "Charm_Expansion_Offer.png" },
+				name = "Abridged Promotion Scroll",
+				price = 20,
+				itemtype = 43946,
+				count = 1,
+				description = "<i>Decipher this scroll to gain 3 promotion points for the Wheel of Destiny.</i>\n\n{character}\n{info} each scroll type can be deciphered only once per character\n{storeinbox}",
+				type = GameStore.OfferTypes.OFFER_TYPE_ITEM,
+			},
+			{
+				icons = { "Charm_Expansion_Offer.png" },
+				name = "Basic Promotion Scroll",
+				price = 35,
+				itemtype = 43947,
+				count = 1,
+				description = "<i>Decipher this scroll to gain 5 promotion points for the Wheel of Destiny.</i>\n\n{character}\n{info} each scroll type can be deciphered only once per character\n{storeinbox}",
+				type = GameStore.OfferTypes.OFFER_TYPE_ITEM,
+			},
+			{
+				icons = { "Charm_Expansion_Offer.png" },
+				name = "Revised Promotion Scroll",
+				price = 50,
+				itemtype = 43948,
+				count = 1,
+				description = "<i>Decipher this scroll to gain 9 promotion points for the Wheel of Destiny.</i>\n\n{character}\n{info} each scroll type can be deciphered only once per character\n{storeinbox}",
+				type = GameStore.OfferTypes.OFFER_TYPE_ITEM,
+			},
+			{
+				icons = { "Charm_Expansion_Offer.png" },
+				name = "Extended Promotion Scroll",
+				price = 70,
+				itemtype = 43949,
+				count = 1,
+				description = "<i>Decipher this scroll to gain 13 promotion points for the Wheel of Destiny.</i>\n\n{character}\n{info} each scroll type can be deciphered only once per character\n{storeinbox}",
+				type = GameStore.OfferTypes.OFFER_TYPE_ITEM,
+			},
+			{
+				icons = { "Charm_Expansion_Offer.png" },
+				name = "Advanced Promotion Scroll",
+				price = 100,
+				itemtype = 43950,
+				count = 1,
+				description = "<i>Decipher this scroll to gain 20 promotion points for the Wheel of Destiny.</i>\n\n{character}\n{info} each scroll type can be deciphered only once per character\n{storeinbox}",
+				type = GameStore.OfferTypes.OFFER_TYPE_ITEM,
+			},
+		},
+	},
 	-- Premium Time
 	{
 		icons = { "Category_PremiumTime.png" },
@@ -6915,6 +7047,18 @@ GameStore.Categories = {
 	},
 }
 
+-- Sort every category's offers by price, lowest to highest.
+local function offerBasePrice(offer)
+	return type(offer.price) == "table" and (offer.price[1] or 0) or (offer.price or 0)
+end
+for _, category in ipairs(GameStore.Categories) do
+	if category.offers then
+		table.sort(category.offers, function(a, b)
+			return offerBasePrice(a) < offerBasePrice(b)
+		end)
+	end
+end
+
 -- Each outfit must be uniquely identified to distinguish between addons.
 -- Here we dynamically assign ids for outfits. These ids must be unique.
 local runningId = 45000
@@ -6935,15 +7079,7 @@ for k, category in ipairs(GameStore.Categories) do
 			if not offer.type then
 				offer.type = GameStore.OfferTypes.OFFER_TYPE_NONE
 			end
-			if not offer.coinType then
-				-- Coin (0): client checks combined store balance (transferable + regular).
-				-- Transferable (1): client only checks transferable balance (e.g. casks with {transferableprice}).
-				if offer.description and offer.description:find("{transferableprice}") then
-					offer.coinType = GameStore.CoinType.Transferable
-				else
-					offer.coinType = GameStore.CoinType.Coin
-				end
-			end
+			offer.coinType = (category.name == "Frags Store" or category.parent == "Frags Store") and GameStore.CoinType.Coin or GameStore.CoinType.Transferable
 		end
 	end
 end

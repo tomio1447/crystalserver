@@ -1,21 +1,21 @@
 local config = {
 	items = {
-		{ id = 35284, charges = 64400 },
-		{ id = 35279, charges = 64400 },
-		{ id = 35281, charges = 64400 },
-		{ id = 35283, charges = 64400 },
-		{ id = 35282, charges = 64400 },
-		{ id = 35280, charges = 64400 },
-		{ id = 44066, charges = 64400 },
-		{ id = 50294, charges = 64400 },
+		{ id = 28557, charges = 3000 },
+		{ id = 28552, charges = 3000 },
+		{ id = 28554, charges = 3000 },
+		{ id = 28556, charges = 3000 },
+		{ id = 28555, charges = 3000 },
+		{ id = 28553, charges = 3000 },
+		{ id = 44065, charges = 3000 },
+		{ id = 50293, charges = 3000 },
 	},
-	storage = tonumber(Storage.PlayerWeaponReward), -- storage key, player can only win once
+	kvKey = "exercise_reward_day", -- player KV key, stores the last calendar day claimed
 }
 
 local function sendExerciseRewardModal(player)
 	local window = ModalWindow({
 		title = "Exercise Reward",
-		message = "choose a item",
+		message = "Choose one daily exercise weapon with 3000 charges.",
 	})
 	for _, it in pairs(config.items) do
 		local iType = ItemType(it.id)
@@ -24,10 +24,15 @@ local function sendExerciseRewardModal(player)
 				if button.name ~= "Select" then
 					return true
 				end
+				local today = tonumber(os.date("%Y%m%d"))
+				if player:kv():get(config.kvKey) == today then
+					player:sendTextMessage(MESSAGE_LOOK, "You already claimed today's exercise weapon. Come back tomorrow.")
+					return true
+				end
 
 				local inbox = player:getStoreInbox()
 				local inboxItems = inbox:getItems()
-				if inbox and #inboxItems < inbox:getMaxCapacity() and player:getFreeCapacity() >= iType:getWeight() then
+				if inbox and #inboxItems < inbox:getMaxCapacity() then
 					local item = inbox:addItem(it.id, it.charges)
 					if item then
 						item:setActionId(IMMOVABLE_ACTION_ID)
@@ -37,8 +42,8 @@ local function sendExerciseRewardModal(player)
 						player:sendTextMessage(MESSAGE_LOOK, "You need to have capacity and empty slots to receive.")
 						return
 					end
+					player:kv():set(config.kvKey, today)
 					player:sendTextMessage(MESSAGE_LOOK, string.format("Congratulations, you received a %s with %i charges in your store inbox.", iType:getName(), it.charges))
-					player:setStorageValue(config.storage, 1)
 				else
 					player:sendTextMessage(MESSAGE_LOOK, "You need to have capacity and empty slots to receive.")
 				end
@@ -54,11 +59,11 @@ end
 
 local exerciseRewardModal = TalkAction("!reward")
 function exerciseRewardModal.onSay(player, words, param)
-	if not configManager.getBoolean(configKeys.TOGGLE_RECEIVE_REWARD) or player:getTown():getId() < TOWNS_LIST.AB_DENDRIEL then
+	if not configManager.getBoolean(configKeys.TOGGLE_RECEIVE_REWARD) then
 		return true
 	end
-	if player:getStorageValue(config.storage) > 0 then
-		player:sendTextMessage(MESSAGE_LOOK, "You already received your exercise weapon reward!")
+	if player:kv():get(config.kvKey) == tonumber(os.date("%Y%m%d")) then
+		player:sendTextMessage(MESSAGE_LOOK, "You already claimed today's exercise weapon. Come back tomorrow.")
 		return true
 	end
 	sendExerciseRewardModal(player)

@@ -68,7 +68,15 @@ bool Task::execute() const {
 		}
 	}
 
-	func();
+	try {
+		func();
+	} catch (const std::exception &err) {
+		g_logger().error("[{}]: exception while executing task '{}': {}", __FUNCTION__, getContext(), err.what());
+		return false;
+	} catch (...) {
+		g_logger().error("[{}]: unknown exception while executing task '{}'.", __FUNCTION__, getContext());
+		return false;
+	}
 	return true;
 }
 

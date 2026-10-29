@@ -20,6 +20,22 @@ end
 local playerLoginGlobal = CreatureEvent("PlayerLoginGlobal")
 
 function playerLoginGlobal.onLogin(player)
+	-- War server: vocation-less characters trigger the client's tutorial/vocation UI. Force a vocation.
+	if player:getVocation():getId() == VOCATION.ID.NONE then
+		player:setVocation(Vocation(VOCATION.ID.ELITE_KNIGHT))
+	end
+
+	if configManager.getBoolean(configKeys.WAR_SYSTEM_ENABLED) then
+		if player:getLastLoginSaved() == 0 then
+			player:setTown(Town(1))
+			player:teleportTo(Position(1048, 1065, 10), true)
+			db.query("UPDATE `players` SET `istutorial` = 0, `town_id` = 1, `posx` = 1048, `posy` = 1065, `posz` = 10 WHERE `id` = " .. player:getGuid())
+		end
+		if player.addMissingBless then
+			player:addMissingBless(true, true)
+		end
+	end
+
 	-- Disables the chain system by default unless enabled in `config.lua`.
 	if not configManager.getBoolean(configKeys.TOGGLE_CHAIN_SYSTEM) then
 		player:setFeature(Features.ChainSystem, 0)
@@ -41,6 +57,72 @@ function playerLoginGlobal.onLogin(player)
 	end
 	player:sendTextMessage(MESSAGE_LOGIN, loginStr)
 
+	-- Grant/ensure a single loot pouch in the store inbox
+	local function ensureSingleLootPouch()
+		local POUCH_ID = 23721
+		local pouches = {}
+		local function scan(container)
+			if not container then
+				return
+			end
+			for _, item in ipairs(container:getItems(true)) do
+				if item:getId() == POUCH_ID then
+					table.insert(pouches, item)
+				end
+			end
+		end
+
+		scan(player:getStoreInbox())
+		scan(player:getInbox())
+		local backpack = player:getSlotItem(CONST_SLOT_BACKPACK)
+		if backpack and backpack:isContainer() then
+			scan(backpack)
+		end
+
+		local storeInbox = player:getStoreInbox()
+		if not storeInbox then
+			return
+		end
+
+		if #pouches == 0 then
+			local pouch = Game.createItem(POUCH_ID, 1)
+			if pouch then
+				storeInbox:addItemEx(pouch)
+			end
+			return
+		end
+
+		local kept = pouches[1]
+		for i = 2, #pouches do
+			local extra = pouches[i]
+			for _, item in ipairs(extra:getItems(false)) do
+				kept:addItemEx(item)
+			end
+			extra:remove()
+		end
+
+		if kept:getParent() ~= storeInbox then
+			kept:moveTo(storeInbox)
+		end
+	end
+
+	ensureSingleLootPouch()
+	player:kv():set("received-loot-pouch", true)
+
+	-- War map offline protection: return players to temple if the map changed while they were offline
+	local mapTokenStorage = (Storage and Storage.Warizi and Storage.Warizi.MapToken) or 150004
+	local markedToken = player:getStorageValue(mapTokenStorage)
+	if markedToken ~= -1 then
+		local manager = _G.WarMapManager
+		local phase = manager and manager.getPhase() or "cooldown"
+		local currentToken = manager and manager.getMapToken() or -1
+		local temple = manager and manager.config.temple or Position(1048, 1065, 10)
+		if phase ~= "active" or markedToken ~= currentToken then
+			player:teleportTo(temple, true)
+			player:setStorageValue(mapTokenStorage, -1)
+		end
+	end
+
 	-- Promotion
 	local vocation = player:getVocation()
 	local promotion = vocation:getPromotion()
@@ -56,6 +138,11 @@ function playerLoginGlobal.onLogin(player)
 	-- Boosted
 	player:sendTextMessage(MESSAGE_BOOSTED_CREATURE, string.format("Today's boosted creature: %s.\nBoosted creatures yield more experience points, carry more loot than usual, and respawn at a faster rate.", Game.getBoostedCreature()))
 	player:sendTextMessage(MESSAGE_BOOSTED_CREATURE, string.format("Today's boosted boss: %s.\nBoosted bosses contain more loot and count more kills for your Bosstiary.", Game.getBoostedBoss()))
+
+	-- War map rotation info
+	if _G.WarMapManager then
+		_G.WarMapManager.sendLoginInfo(player)
+	end
 
 	-- Rewards
 	local rewards = #player:getRewardList()

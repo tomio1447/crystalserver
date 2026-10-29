@@ -1275,6 +1275,9 @@ ReturnValue Game::getPlayerByNameWildcard(const std::string &s, std::shared_ptr<
 }
 
 std::vector<std::shared_ptr<Player>> Game::getPlayersByAccount(const std::shared_ptr<Account> &acc, bool allowOffline /* = false */) {
+	if (!acc) {
+		return {};
+	}
 	auto [accountPlayers, error] = acc->getAccountPlayers();
 	if (error != enumToValue(AccountErrors_t::Ok)) {
 		return {};
@@ -1340,6 +1343,11 @@ bool Game::placeCreature(const std::shared_ptr<Creature> &creature, const Positi
 		if (const auto &tmpPlayer = spectator->getPlayer()) {
 			tmpPlayer->sendCreatureAppear(creature, creature->getPosition(), true);
 			hasPlayerSpectators = true;
+		}
+		// clientless bot players skip their own login-path appear handling
+		const auto &specPlayer = spectator->getPlayer();
+		if (specPlayer && specPlayer->isBot() && spectator == creature) {
+			continue;
 		}
 		spectator->onCreatureAppear(creature, true);
 	}

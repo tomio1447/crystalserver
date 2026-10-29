@@ -1607,14 +1607,12 @@ for _, itemNameOrId in ipairs(garbage) do
 	end
 end
 
-local lootPouchEntry = { itemName = "all loot in pouch", clientId = ITEM_GOLD_POUCH, sell = 1 }
-LootShopConfig = { lootPouchEntry }
+LootShopConfig = {}
 
 for category, items in pairs(LootShopConfigTable) do
 	for _, item in ipairs(items) do
 		table.insert(LootShopConfig, item)
 	end
-	table.insert(LootShopConfigTable[category], lootPouchEntry)
 end
 
 function FindLootShopCategory(categoryName)

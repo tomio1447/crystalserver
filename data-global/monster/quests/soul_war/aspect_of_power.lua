@@ -25,9 +25,7 @@ monster.changeTarget = {
 	chance = 8,
 }
 
-monster.events = {
-	"SoulWarAspectOfPowerDeath",
-}
+
 
 monster.strategiesTarget = {
 	nearest = 100,

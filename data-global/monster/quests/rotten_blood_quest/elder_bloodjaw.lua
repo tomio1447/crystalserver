@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("Elder Bloodjaw")
+﻿local mType = Game.createMonsterType("Elder Bloodjaw")
 local monster = {}
 
 monster.description = "an elder bloodjaw"
@@ -96,33 +96,5 @@ monster.immunities = {
 	{ type = "invisible", condition = true },
 	{ type = "bleed", condition = false },
 }
-
-monster.events = {
-	"MonsterAI_Death",
-}
-
-mType.onThink = function(monster, variant, interval)
-	if MonsterAI and MonsterAI.onThink then
-		MonsterAI.onThink(monster)
-	end
-
-	local monsterPos = monster:getPosition()
-	local spectators = Game.getSpectators(monsterPos, false, false, 15, 15, 15, 15)
-	local bossAlive = false
-
-	for _, creature in ipairs(spectators) do
-		if creature:isMonster() then
-			local name = creature:getName():lower()
-			if name == "murcion" or name == "ichgahal" or name == "vemiath" or name == "chagorz" or name == "bakragore" then
-				bossAlive = true
-				break
-			end
-		end
-	end
-
-	if not bossAlive then
-		monster:remove()
-	end
-end
 
 mType:register(monster)

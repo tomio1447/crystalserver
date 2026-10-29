@@ -1,88 +1,112 @@
 local config = {
-	-- Position of the first position (line 1 column 1)
-	firstRoomPosition = { x = 1018, y = 1112, z = 7 },
-	-- X distance between each room (on the same line)
-	distancePositionX = 12,
-	-- Y distance between each room (on the same line)
-	distancePositionY = 12,
-	-- Number of columns
-	columns = 7,
-	-- Number of lines
-	lines = 54,
+	-- Area containing all trainer cabins
+	fromPosition = { x = 700, y = 950, z = 11 },
+	toPosition = { x = 900, y = 1200, z = 11 },
+	-- Action id used by the exit teleport in every room
+	roomActionId = 40015,
+	-- The free player tile is immediately south of the exit teleport
+	playerTileOffset = { x = 0, y = 1 },
+	expectedRooms = 112,
 }
 
-local function isBusyable(position)
-	local creature = Tile(position):getTopCreature()
-	if creature then
-		if creature:isPlayer() or creature:getMaster() then
-			return false
+local roomPositions
+
+local function hasActionId(item, actionId)
+	return item and item:getActionId() == actionId
+end
+
+local function findRoomPositions()
+	local positions = {}
+	for x = config.fromPosition.x, config.toPosition.x do
+		for y = config.fromPosition.y, config.toPosition.y do
+			local position = Position(x, y, config.fromPosition.z)
+			local tile = Tile(position)
+			if tile then
+				local marked = hasActionId(tile:getGround(), config.roomActionId)
+				if not marked then
+					for _, tileItem in ipairs(tile:getItems() or {}) do
+						if hasActionId(tileItem, config.roomActionId) then
+							marked = true
+							break
+						end
+					end
+				end
+				if marked then
+					table.insert(positions, Position(position.x + config.playerTileOffset.x, position.y + config.playerTileOffset.y, position.z))
+				end
+			end
 		end
 	end
 
+	table.sort(positions, function(left, right)
+		return left.y == right.y and left.x < right.x or left.y < right.y
+	end)
+	roomPositions = positions
+	return positions
+end
+
+local function isRoomAvailable(position, player)
 	local tile = Tile(position)
 	if not tile then
 		return false
 	end
 
-	local ground = tile:getGround()
-	if not ground or ground:hasProperty(CONST_PROP_BLOCKSOLID) then
-		return false
-	end
-
-	local items = tile:getItems()
-	for i = 1, tile:getItemCount() do
-		local item = items[i]
-		local itemType = item:getType()
-		if itemType:getType() ~= ITEM_TYPE_MAGICFIELD and not itemType:isMovable() and item:hasProperty(CONST_PROP_BLOCKSOLID) then
+	for _, creature in ipairs(tile:getCreatures() or {}) do
+		if creature:isPlayer() then
 			return false
 		end
 	end
-	return true
+	return tile:queryAdd(player) == RETURNVALUE_NOERROR
 end
 
-local function calculatingRoom(uid, position, column, line)
-	local player = Player(uid)
-	if column >= config.columns then
-		column = 0
-		line = line < (config.lines - 1) and line + 1 or false
+local function ensureTargetDummy(position)
+	local tile = Tile(position)
+	if tile then
+		for _, creature in ipairs(tile:getCreatures() or {}) do
+			if creature:isMonster() and creature:getName():lower() == "target dummy" then
+				return true
+			end
+		end
+	end
+	return Game.createMonster("Target Dummy", position, true, false) ~= nil
+end
+
+local function ensureRoomDummies(playerPosition)
+	ensureTargetDummy(Position(playerPosition.x - 1, playerPosition.y - 1, playerPosition.z))
+	ensureTargetDummy(Position(playerPosition.x + 1, playerPosition.y - 1, playerPosition.z))
+end
+
+function teleportPlayerToAvailableTrainerRoom(player, sourcePosition)
+	if not player or not player:isPlayer() then
+		return false
 	end
 
-	if line then
-		local room_pos = { x = position.x + (column * config.distancePositionX), y = position.y + (line * config.distancePositionY), z = position.z }
-		if isBusyable(room_pos) then
-			player:teleportTo(room_pos)
-			player:getPosition():sendMagicEffect(CONST_ME_TELEPORT)
-		else
-			calculatingRoom(uid, position, column + 1, line)
-		end
-	else
-		player:sendCancelMessage("Couldn't find any position for you right now.")
+	local positions = roomPositions or findRoomPositions()
+	if #positions ~= config.expectedRooms then
+		logger.warn("[movement_trainer_entrance] Found {} trainer rooms with aid {}, expected {}", #positions, config.roomActionId, config.expectedRooms)
 	end
+
+	for _, roomPosition in ipairs(positions) do
+		if isRoomAvailable(roomPosition, player) then
+			sourcePosition:sendMagicEffect(CONST_ME_TELEPORT)
+			player:teleportTo(roomPosition)
+			ensureRoomDummies(roomPosition)
+			roomPosition:sendMagicEffect(CONST_ME_TELEPORT)
+			return true
+		end
+	end
+
+	player:sendCancelMessage("All trainer rooms are currently occupied.")
+	sourcePosition:sendMagicEffect(CONST_ME_POFF)
+	return false
 end
 
 local trainerEntrance = MoveEvent()
 function trainerEntrance.onStepIn(creature, item, position, fromPosition)
-	if not creature:isPlayer() then
-		return true
-	end
-
-	calculatingRoom(creature.uid, config.firstRoomPosition, 0, 0)
-	player_position = creature:getPosition()
-
-	local positions = {
-		Position(player_position.x + 1, player_position.y - 1, player_position.z),
-		Position(player_position.x - 1, player_position.y - 1, player_position.z),
-	}
-
-	for _, pos in ipairs(positions) do
-		local tile = Tile(pos)
-		local topCreature = tile and tile:getTopCreature()
-		if not (topCreature and topCreature:getName() == "Target Dummy") then
-			Game.createMonster("Target Dummy", pos, true, false)
-		end
-	end
+	teleportPlayerToAvailableTrainerRoom(creature, position)
 	return true
 end
 
-trainerEntrance:position({ x = 1116, y = 1092, z = 7 })
+trainerEntrance:type("stepin")
+trainerEntrance:aid(40014)
 trainerEntrance:register()

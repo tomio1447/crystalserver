@@ -18,8 +18,8 @@ monster.bosstiary = {
 	bossRace = RARITY_ARCHFOE,
 }
 
-monster.health = 80000
-monster.maxHealth = 80000
+monster.health = 55000
+monster.maxHealth = 55000
 monster.race = "blood"
 monster.corpse = 33973
 monster.speed = 130
@@ -29,12 +29,8 @@ monster.faction = FACTION_LIONUSURPERS
 monster.enemyFactions = { FACTION_LION, FACTION_PLAYER }
 
 monster.summon = {
-	maxSummons = 1,
-	summons = {
-		{ name = "preceptor lazare", chance = 10, interval = 8000, count = 1 },
-		{ name = "grand commander soeren", chance = 10, interval = 8000, count = 1 },
-		{ name = "grand chaplain gaunder", chance = 10, interval = 8000, count = 1 },
-	},
+	maxSummons = 0,
+	summons = {},
 }
 
 monster.changeTarget = {

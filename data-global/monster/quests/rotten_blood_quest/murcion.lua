@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("Murcion")
+﻿local mType = Game.createMonsterType("Murcion")
 local monster = {}
 
 monster.description = "Murcion"
@@ -14,7 +14,7 @@ monster.outfit = {
 }
 
 monster.events = {
-	"RottenBloodBossDeath",
+	"SanguineBossDeath",
 }
 
 monster.bosstiary = {
@@ -127,152 +127,11 @@ monster.immunities = {
 	{ type = "bleed", condition = false },
 }
 
-local aditionalMonsters = {
-	{ name = "Mushroom" },
-	{ name = "Mushroom" },
-	{ name = "Mushroom" },
-}
-local ElderBloodjaws = {
-	{ name = "Elder Bloodjaw" },
-	{ name = "Elder Bloodjaw" },
-}
-
-local accumulatedTime = 0
-local summonInterval = 0
-local activeSummons = {}
-
-local function getRandomPosition(monsterPosition)
-	local offsetX = math.random(-1, 1)
-	local offsetY = math.random(-1, 1)
-	local offsetZ = monsterPosition.z
-
-	return Position(monsterPosition.x + offsetX, monsterPosition.y + offsetY, offsetZ)
-end
-
-local function getClosePosition(centerPos)
-	local tries = 10
-	for i = 1, tries do
-		local offsetX = math.random(-1, 1)
-		local offsetY = math.random(-1, 1)
-		local tryPos = Position(centerPos.x + offsetX, centerPos.y + offsetY, centerPos.z)
-		local tile = Tile(tryPos)
-		if tile and tile:isWalkable() then
-			return tryPos
-		end
-	end
-	return centerPos
-end
-
-local RottenBloodMechanics = dofile(DATA_DIRECTORY .. "/scripts/quests/rotten_blood_quest/rotten_blood_boss_mechanics.lua")
-
-local function ensureSummons(monster)
-	local pos = monster:getPosition()
-	local radiusX, radiusY = 16, 16
-
-	local existingMushrooms = 0
-
-	for _, cid in ipairs(Game.getSpectators(pos, false, false, radiusX, radiusX, radiusY, radiusY)) do
-		if cid:isMonster() then
-			local name = cid:getName():lower()
-			if name == "mushroom" then
-				existingMushrooms = existingMushrooms + 1
-			end
-		end
-	end
-
-	RottenBloodMechanics.handleElderBloodjawSpawn("Murcion", monster)
-
-	for i = 1, 4 - existingMushrooms do
-		local summonPos = getClosePosition(pos)
-		Game.createMonster("Mushroom", summonPos)
-	end
-end
-
-mType.onThink = function(monster, interval)
-	accumulatedTime = accumulatedTime + interval
-	ensureSummons(monster)
-
-	if accumulatedTime >= summonInterval then
-		for _, summon in ipairs(activeSummons) do
-			local creature = Creature(summon)
-			if creature then
-				creature:remove()
-			end
-		end
-		activeSummons = {}
-
-		for _, monsterData in ipairs(aditionalMonsters) do
-			local summonPosition = getRandomPosition(monster:getPosition())
-			local summon = Game.createMonster(monsterData.name, summonPosition)
-			if summon then
-				table.insert(activeSummons, summon:getId())
-			end
-		end
-
-		accumulatedTime = 0
-		summonInterval = math.random(8000, 9000)
-	end
-end
-
 mType.onAppear = function(monster, creature)
 	if monster:getType():isRewardBoss() then
 		monster:setReward(true)
 	end
 end
 
-mType.onDisappear = function(monster, creature) end
-
-mType.onMove = function(_, creature, fromPos, toPos)
-	local tile = Tile(toPos)
-	if not tile then
-		return
-	end
-
-	local item = tile:getTopDownItem()
-	local itemId = item and item:getId() or 0
-
-	if itemId == 42851 or itemId == 42853 then
-		if creature and creature:isMonster() and creature:getName():lower() == "murcion" then
-			local currentHealth = creature:getHealth()
-			local maxHealth = creature:getMaxHealth()
-			local healAmount = 15000
-
-			if currentHealth < maxHealth then
-				creature:addHealth(healAmount)
-				toPos:sendMagicEffect(CONST_ME_MAGIC_GREEN)
-			end
-		end
-		return
-	end
-
-	if not creature or not creature:isMonster() or creature:getName():lower() ~= "murcion" then
-		return
-	end
-
-	local spore = Game.createItem(42851, 1, toPos)
-	if spore then
-		addEvent(function(position)
-			local tile = Tile(position)
-			if tile then
-				local item42851 = tile:getItemById(42851)
-				if item42851 then
-					item42851:transform(42853)
-
-					addEvent(function(pos)
-						local t = Tile(pos)
-						if t then
-							local item42853 = t:getItemById(42853)
-							if item42853 then
-								item42853:remove()
-							end
-						end
-					end, 3000, position)
-				end
-			end
-		end, 4000, toPos)
-	end
-end
-
-mType.onSay = function(monster, creature, type, message) end
 
 mType:register(monster)

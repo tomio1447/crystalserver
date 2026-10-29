@@ -101,11 +101,26 @@ function mounts.onUse(cid, item, fromPosition, itemEx, toPosition)
 	local targetMonster = Monster(itemEx.uid)
 	local targetNpc = Npc(itemEx.uid)
 	local targetItem = Item(itemEx.uid)
+	local targetPlayer = Player(itemEx.uid)
 	local mount = config[item.itemid]
 	local rand = math.random(100)
 
 	if mount == nil or player:hasMount(mount.ID) then
 		return false
+	end
+
+	-- Warizi: using the taming item on yourself (or plain "use" on items
+	-- without "use with") grants the mount directly
+	if (mount.TYPE == TYPE_MONSTER or mount.TYPE == TYPE_ITEM) and ((targetPlayer and targetPlayer:getId() == player:getId()) or (targetItem and targetItem:getId() == item.itemid)) then
+		if mount.ACHIEV then
+			player:addAchievement(mount.ACHIEV)
+		end
+		player:addAchievement("Natural Born Cowboy")
+		player:addMount(mount.ID)
+		player:say(mount.SUCCESS_MSG, TALKTYPE_MONSTER_SAY)
+		toPosition:sendMagicEffect(CONST_ME_MAGIC_GREEN)
+		Item(item.uid):remove(1)
+		return true
 	end
 
 	-- Glooth Glider

@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("Ichgahal")
+﻿local mType = Game.createMonsterType("Ichgahal")
 local monster = {}
 
 monster.description = "Ichgahal"
@@ -14,7 +14,7 @@ monster.outfit = {
 }
 
 monster.events = {
-	"RottenBloodBossDeath",
+	"SanguineBossDeath",
 }
 
 monster.bosstiary = {
@@ -137,129 +137,11 @@ monster.immunities = {
 	{ type = "bleed", condition = false },
 }
 
-local aditionalMonsters = {
-	{ name = "Mushroom" },
-	{ name = "Mushroom" },
-	{ name = "Mushroom" },
-}
-local ElderBloodjaws = {
-	{ name = "Elder Bloodjaw" },
-	{ name = "Elder Bloodjaw" },
-}
-
-local accumulatedTime = 0
-local summonInterval = 0
-local activeSummons = {}
-
-local function getRandomPosition(monsterPosition)
-	local offsetX = math.random(-2, 2)
-	local offsetY = math.random(-2, 2)
-	local offsetZ = monsterPosition.z
-
-	return Position(monsterPosition.x + offsetX, monsterPosition.y + offsetY, offsetZ)
-end
-
-local function getClosePosition(centerPos)
-	local tries = 10
-	for i = 1, tries do
-		local offsetX = math.random(-2, 2)
-		local offsetY = math.random(-2, 2)
-		local tryPos = Position(centerPos.x + offsetX, centerPos.y + offsetY, centerPos.z)
-		local tile = Tile(tryPos)
-		if tile and tile:isWalkable() then
-			return tryPos
-		end
-	end
-	return centerPos
-end
-
-local RottenBloodMechanics = dofile(DATA_DIRECTORY .. "/scripts/quests/rotten_blood_quest/rotten_blood_boss_mechanics.lua")
-
-local function ensureSummons(monster)
-	local pos = monster:getPosition()
-	local radiusX, radiusY = 14, 14
-
-	local existingMushrooms = 0
-
-	for _, cid in ipairs(Game.getSpectators(pos, false, false, radiusX, radiusX, radiusY, radiusY)) do
-		if cid:isMonster() then
-			local name = cid:getName():lower()
-			if name == "mushroom" then
-				existingMushrooms = existingMushrooms + 1
-			end
-		end
-	end
-
-	RottenBloodMechanics.handleElderBloodjawSpawn("Ichgahal", monster)
-
-	for i = 1, 4 - existingMushrooms do
-		local summonPos = getClosePosition(pos)
-		Game.createMonster("Mushroom", summonPos)
-	end
-end
-
-mType.onThink = function(monster, interval)
-	accumulatedTime = accumulatedTime + interval
-	ensureSummons(monster)
-
-	if accumulatedTime >= summonInterval then
-		for _, summon in ipairs(activeSummons) do
-			local creature = Creature(summon)
-			if creature then
-				creature:remove()
-			end
-		end
-		activeSummons = {}
-
-		for _, monsterData in ipairs(aditionalMonsters) do
-			local summonPosition = getRandomPosition(monster:getPosition())
-			local summon = Game.createMonster(monsterData.name, summonPosition)
-			if summon then
-				table.insert(activeSummons, summon:getId())
-			end
-		end
-
-		accumulatedTime = 0
-		summonInterval = math.random(8000, 9000)
-	end
-end
-
 mType.onAppear = function(monster, creature)
 	if monster:getType():isRewardBoss() then
 		monster:setReward(true)
 	end
 end
 
-mType.onDisappear = function(monster, creature) end
-
-mType.onMove = function(_, creature, fromPos, toPos)
-	local tile = Tile(toPos)
-	if not tile then
-		return
-	end
-
-	local item = tile:getTopDownItem()
-	local itemId = item and item:getId() or 0
-
-	if itemId == 43294 or itemId == 43295 or itemId == 43296 then
-		return
-	end
-
-	if not creature or not creature:isMonster() or creature:getName():lower() ~= "ichgahal" then
-		return
-	end
-
-	local newItem = Game.createItem(43294, 1, toPos)
-	if newItem then
-		addEvent(function()
-			local decayItem = Tile(toPos):getItemById(43294)
-			if decayItem then
-				decayItem:transform(43295)
-			end
-		end, 5000)
-	end
-end
-
-mType.onSay = function(monster, creature, type, message) end
 
 mType:register(monster)

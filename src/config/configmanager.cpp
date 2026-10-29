@@ -197,6 +197,7 @@ bool ConfigManager::load() {
 	loadBoolConfig(L, VIP_SYSTEM_ENABLED, "vipSystemEnabled", false);
 	loadBoolConfig(L, WALK_THROUGH_PLAYERS, "walkThroughPlayers", true);
 	loadBoolConfig(L, WARN_UNSAFE_SCRIPTS, "warnUnsafeScripts", true);
+	loadBoolConfig(L, WAR_SYSTEM_ENABLED, "warSystemEnabled", false);
 	loadBoolConfig(L, WEEKLY_TASKS_ENABLED, "weeklyTasksEnabled", true);
 	loadBoolConfig(L, XP_DISPLAY_MODE, "experienceDisplayRates", true);
 
@@ -252,6 +253,9 @@ bool ConfigManager::load() {
 	loadFloatConfig(L, TRANSCENDENCE_CHANCE_FORMULA_A, "transcendenceChanceFormulaA", 0.0127);
 	loadFloatConfig(L, TRANSCENDENCE_CHANCE_FORMULA_B, "transcendenceChanceFormulaB", 0.1070);
 	loadFloatConfig(L, TRANSCENDENCE_CHANCE_FORMULA_C, "transcendenceChanceFormulaC", 0.0073);
+	loadFloatConfig(L, WAR_BASE_FORGE_CHANCE, "warBaseForgeChance", 1.0);
+	loadFloatConfig(L, WAR_VIP_FORGE_CHANCE_BONUS, "warVipForgeChanceBonus", 0.5);
+	loadFloatConfig(L, WAR_SKILL_LOSS_MULTIPLIER, "warSkillLossMultiplier", 0.2);
 
 	loadIntConfig(L, ACTIONS_DELAY_INTERVAL, "timeBetweenActions", 200);
 	loadIntConfig(L, ADVENTURERSBLESSING_LEVEL, "adventurersBlessingLevel", 21);
@@ -422,6 +426,15 @@ bool ConfigManager::load() {
 	loadIntConfig(L, VIP_BONUS_LOOT, "vipBonusLoot", 0);
 	loadIntConfig(L, VIP_BONUS_SKILL, "vipBonusSkill", 0);
 	loadIntConfig(L, VIP_FAMILIAR_TIME_COOLDOWN_REDUCTION, "vipFamiliarTimeCooldownReduction", 0);
+	loadIntConfig(L, WAR_MIN_LEVEL, "warMinLevel", 220);
+	loadIntConfig(L, WAR_PVP_CRYSTAL_COIN_REWARD, "warPvpCrystalCoinReward", 1);
+	loadIntConfig(L, WAR_PVP_FRAG_COIN_REWARD, "warPvpFragCoinReward", 1);
+	loadIntConfig(L, WAR_PVP_DUST_REWARD, "warPvpDustReward", 2);
+	loadIntConfig(L, WAR_WHITE_SKULL_FRAGS, "warWhiteSkullFrags", 10);
+	loadIntConfig(L, WAR_YELLOW_SKULL_FRAGS, "warYellowSkullFrags", 50);
+	loadIntConfig(L, WAR_ORANGE_SKULL_FRAGS, "warOrangeSkullFrags", 100);
+	loadIntConfig(L, WAR_RED_SKULL_FRAGS, "warRedSkullFrags", 150);
+	loadIntConfig(L, WAR_BLACK_SKULL_FRAGS, "warBlackSkullFrags", 300);
 	loadIntConfig(L, WEB_MARKET_ORDERS_INTERVAL, "webMarketOrdersInterval", 2000);
 	loadIntConfig(L, WEEK_KILLS_TO_RED, "weekKillsToRedSkull", 5);
 	loadIntConfig(L, WHEEL_ATELIER_REVEAL_GREATER_COST, "wheelAtelierRevealGreaterCost", 6000000);

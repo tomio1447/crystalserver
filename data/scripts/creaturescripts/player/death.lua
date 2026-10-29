@@ -119,6 +119,36 @@ function playerDeath.onDeath(player, corpse, killer, mostDamageKiller, unjustifi
 	end
 	removeAllPlayerIcons(player)
 
+	if WarSystem.isEnabled() then
+		local attackers = {}
+		local totalDamage = 0
+		for creatureId, damageInfo in pairs(player:getDamageMap()) do
+			local attacker = Creature(creatureId)
+			if attacker then
+				if not attacker:isPlayer() then
+					local master = attacker:getMaster()
+					attacker = master and master:isPlayer() and master or nil
+				end
+				if attacker and attacker:isPlayer() and attacker:getId() ~= player:getId() then
+					local attackerId = attacker:getId()
+					attackers[attackerId] = attackers[attackerId] or { player = attacker, damage = 0 }
+					attackers[attackerId].damage = attackers[attackerId].damage + damageInfo.total
+					totalDamage = totalDamage + damageInfo.total
+				end
+			end
+		end
+
+		if totalDamage > 0 then
+			WarSystem.addDeath(player)
+			for _, contribution in pairs(attackers) do
+				WarSystem.rewardAttacker(contribution.player, player, contribution.damage, contribution.damage / totalDamage, 0)
+				if _G.WarMapStats and _G.WarMapStats.addFrag then
+					_G.WarMapStats.addFrag(contribution.player:getGuid())
+				end
+			end
+		end
+	end
+
 	if byPlayer == 1 then
 		killer:sendBannerType(BANNER_TYPE_PLAYERKILL)
 		local resultId = false

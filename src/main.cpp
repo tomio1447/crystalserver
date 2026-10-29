@@ -18,6 +18,34 @@
 #include "crystalserver.hpp"
 #include "lib/di/container.hpp"
 
+#ifdef _WIN32
+	#include <windows.h>
+	#include <cstdio>
+
+static LONG WINAPI wariziCrashFilter(EXCEPTION_POINTERS* info) {
+	if (const auto f = fopen("crash_report.log", "a")) {
+		const auto base = reinterpret_cast<const char*>(GetModuleHandleA(nullptr));
+		fprintf(
+			f, "CRASH: code=0x%08lx addr=%p rip_rva=0x%llx time=%llu\n",
+			info->ExceptionRecord->ExceptionCode,
+			info->ExceptionRecord->ExceptionAddress,
+			(unsigned long long)((const char*)info->ExceptionRecord->ExceptionAddress - base),
+			(unsigned long long)time(nullptr)
+		);
+		void* frames[32] = {};
+		const USHORT n = RtlCaptureStackBackTrace(1, 32, frames, nullptr);
+		for (USHORT i = 0; i < n; ++i) {
+			fprintf(f, "  frame[%u]=0x%llx\n", i, (unsigned long long)((const char*)frames[i] - base));
+		}
+		fclose(f);
+	}
+	return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
+
 int main() {
+#ifdef _WIN32
+	SetUnhandledExceptionFilter(wariziCrashFilter);
+#endif
 	return inject<CrystalServer>().run();
 }

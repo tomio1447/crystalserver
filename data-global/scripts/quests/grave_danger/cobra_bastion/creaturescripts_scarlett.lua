@@ -12,8 +12,8 @@ local arr = {
 
 combat:setArea(createCombatArea(arr))
 function onTargetCreature(creature, target)
-	local min = -7500
-	local max = -7500
+	local min = -2000
+	local max = -2000
 	doTargetCombatHealth(0, target, COMBAT_AGONYDAMAGE, min, max, CONST_ME_NONE)
 	return true
 end
@@ -124,7 +124,7 @@ function scarlettHealth.onHealthChange(creature, attacker, primaryDamage, primar
 	end
 
 	if not creature:isMoveLocked() then
-		return primaryDamage * 0.01, primaryType, secondaryDamage * 0.01, secondaryType
+		return primaryDamage * 0.35, primaryType, secondaryDamage * 0.35, secondaryType
 	end
 
 	addEvent(eventDoDamage, 200, creature:getId(), attacker:getId(), primaryType)

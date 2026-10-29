@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `worlds` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 INSERT INTO `worlds` (`name`, `type`, `motd`, `location`, `ip`, `port`, `port_status`, `creation`)
-VALUES ('Crystal', 'pvp', 'Welcome to the Crystal Server!', 'South America', '127.0.0.1', 7172, 7173, UNIX_TIMESTAMP());
+VALUES ('Crystal', 'retro-hardcore', 'Welcome to the Crystal Server!', 'South America', '127.0.0.1', 7172, 7173, UNIX_TIMESTAMP());
 
 -- Table structure `server_config`
 CREATE TABLE IF NOT EXISTS `server_config` (
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS `server_config` (
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `server_config` (`config`, `value`, `world_id`) VALUES ('db_version', '67', 1), ('motd_hash', '', 1), ('motd_num', '0', 1), ('players_record', '0', 1);
+INSERT INTO `server_config` (`config`, `value`, `world_id`) VALUES ('db_version', '69', 1), ('motd_hash', '', 1), ('motd_num', '0', 1), ('players_record', '0', 1);
 
 -- Table structure `accounts`
 CREATE TABLE IF NOT EXISTS `accounts` (
@@ -183,6 +183,8 @@ CREATE TABLE IF NOT EXISTS `players` (
     `is_locked` tinyint(1) NOT NULL DEFAULT '0',
     `locked_at` bigint(20) NOT NULL DEFAULT '0',
     `lock_reason` varchar(64) NOT NULL DEFAULT '',
+    `war_lifetime_frags` int(11) UNSIGNED NOT NULL DEFAULT '0',
+    `war_deaths` int(11) UNSIGNED NOT NULL DEFAULT '0',
     INDEX `account_id` (`account_id`),
     INDEX `vocation` (`vocation`),
     INDEX `idx_players_concurrency_lock` (`is_locked`, `locked_at`),
@@ -765,6 +767,25 @@ CREATE TABLE IF NOT EXISTS `player_kills` (
         FOREIGN KEY (`player_id`) REFERENCES `players` (`id`)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- Table structure `war_pvp_kills`
+CREATE TABLE IF NOT EXISTS `war_pvp_kills` (
+    `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `victim_id` int(11) NOT NULL,
+    `attacker_id` int(11) NOT NULL,
+    `damage` bigint(20) UNSIGNED NOT NULL DEFAULT '0',
+    `damage_ratio` decimal(8,6) NOT NULL DEFAULT '0.000000',
+    `experience` bigint(20) UNSIGNED NOT NULL DEFAULT '0',
+    `frag_coins` int(11) UNSIGNED NOT NULL DEFAULT '0',
+    `crystal_coins` int(11) UNSIGNED NOT NULL DEFAULT '0',
+    `forge_dust` int(11) UNSIGNED NOT NULL DEFAULT '0',
+    `created_at` bigint(20) UNSIGNED NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `war_pvp_kills_victim` (`victim_id`),
+    INDEX `war_pvp_kills_attacker` (`attacker_id`),
+    CONSTRAINT `war_pvp_kills_victim_fk` FOREIGN KEY (`victim_id`) REFERENCES `players` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `war_pvp_kills_attacker_fk` FOREIGN KEY (`attacker_id`) REFERENCES `players` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Table structure `player_namelocks`
 CREATE TABLE IF NOT EXISTS `player_namelocks` (

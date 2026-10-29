@@ -80,6 +80,13 @@ Blessings.DebugPrint = function(content, pre, pos)
 end
 
 Blessings.PlayerDeath = function(player, corpse, killer)
+	if configManager.getBoolean(configKeys.WAR_SYSTEM_ENABLED) then
+		if not player:getSlotItem(CONST_SLOT_BACKPACK) then
+			player:addItem(ITEM_BAG, 1, false, CONST_SLOT_BACKPACK)
+		end
+		return true
+	end
+
 	local hasAol = (player:getSlotItem(CONST_SLOT_NECKLACE) and player:getSlotItem(CONST_SLOT_NECKLACE):getId() == ITEM_AMULETOFLOSS)
 	local hasSkull = table.contains({ SKULL_RED, SKULL_BLACK }, player:getSkull())
 	local currBlessCount = player:getBlessings()

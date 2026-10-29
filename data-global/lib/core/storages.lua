@@ -3187,6 +3187,9 @@ Storage = {
 		OnlineCoinsGain = 150002,
 		OnlineTokensGain = 150003,
 	},
+	Warizi = {
+		MapToken = 150004,
+	},
 }
 
 GlobalStorage = {

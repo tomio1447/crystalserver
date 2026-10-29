@@ -306,6 +306,8 @@ bool IOLoginDataSave::savePlayerFirst(const std::shared_ptr<Player> &player) {
 	query << "`offlinetraining_time` = " << player->getOfflineTrainingTime() / 1000 << ",";
 	query << "`offlinetraining_skill` = " << std::to_string(player->getOfflineTrainingSkill()) << ",";
 	query << "`stamina` = " << player->getStaminaMinutes() << ",";
+	query << "`war_lifetime_frags` = " << player->getWarLifetimeFrags() << ",";
+	query << "`war_deaths` = " << player->getWarDeaths() << ",";
 	query << "`skill_fist` = " << player->skills[SKILL_FIST].level << ",";
 	query << "`skill_fist_tries` = " << player->skills[SKILL_FIST].tries << ",";
 	query << "`skill_club` = " << player->skills[SKILL_CLUB].level << ",";

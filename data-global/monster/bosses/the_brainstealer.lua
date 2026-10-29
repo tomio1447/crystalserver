@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("The Brainstealer")
+﻿local mType = Game.createMonsterType("The Brainstealer")
 local monster = {}
 
 monster.description = "The Brainstealer"
@@ -18,7 +18,7 @@ monster.bosstiary = {
 	bossRace = RARITY_ARCHFOE,
 }
 
-monster.health = 300000
+monster.health = 5000
 monster.maxHealth = monster.health
 monster.race = "undead"
 monster.corpse = 36843

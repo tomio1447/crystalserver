@@ -346,6 +346,12 @@ public:
 	bool isMounted() const {
 		return defaultOutfit.lookMount != 0;
 	}
+	bool isBot() const {
+		return bot;
+	}
+	void setBot(bool value) {
+		bot = value;
+	}
 	bool toggleMount(bool mount);
 	bool tameMount(uint16_t mountId);
 	bool untameMount(uint16_t mountId);
@@ -834,6 +840,7 @@ public:
 	bool hasRealShield() const;
 	bool isAttackable() const override;
 	static bool lastHitIsPlayer(const std::shared_ptr<Creature> &lastHitCreature);
+	uint8_t getUnfairFightReduction(const std::shared_ptr<Creature> &lastHitCreature, bool &isPvpDeath) const;
 
 	// stash functions
 	ReturnValue addItemFromStash(uint16_t itemId, uint32_t itemCount);
@@ -1524,6 +1531,15 @@ public:
 	void removeForgeDustLevel(uint64_t amount);
 	uint64_t getForgeDustLevel() const;
 
+	void setWarLifetimeFrags(uint32_t amount);
+	uint32_t addWarLifetimeFrag();
+	uint32_t getWarLifetimeFrags() const;
+	void setWarDeaths(uint32_t amount);
+	uint32_t addWarDeath();
+	uint32_t getWarDeaths() const;
+	uint32_t getWarRankPoints() const;
+	double getWarForgeChance() const;
+
 	std::vector<ForgeHistory> &getForgeHistory();
 
 	void setForgeHistory(const ForgeHistory &history);
@@ -1957,6 +1973,8 @@ private:
 	int32_t m_deathTime = 0;
 	uint32_t coinBalance = 0;
 	uint32_t coinTransferableBalance = 0;
+	uint32_t warLifetimeFrags = 0;
+	uint32_t warDeaths = 0;
 	uint16_t xpBoostTime = 0;
 	uint8_t worldId = 1;
 
@@ -2017,6 +2035,7 @@ private:
 
 	bool chaseMode = false;
 	bool secureMode = true;
+	bool bot = false;
 	bool inMarket = false;
 	bool wasMounted = false;
 	bool ghostMode = false;

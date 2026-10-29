@@ -19,10 +19,6 @@ monster.race = "undead"
 monster.corpse = 0
 monster.speed = 200
 
-monster.events = {
-	"GreedMonsterDeath",
-}
-
 monster.changeTarget = {
 	interval = 4000,
 	chance = 10,

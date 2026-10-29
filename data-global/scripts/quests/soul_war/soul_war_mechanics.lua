@@ -1055,7 +1055,8 @@ function megalomaniaDeath.onDeath(creature, corpse, killer, mostDamageKiller, la
 		-- Checks if the boss has already been defeated
 		if not soulWarQuest:get("goshnar's-megalomania-killed") then
 			soulWarQuest:set("goshnar's-megalomania-killed", true)
-			killerPlayer:sendTextMessage(MESSAGE_EVENT_ADVANCE, "You have defeated Goshnar's Megalomania. Report the 'task' to Flickering Soul and earn your outfit.")
+			killerPlayer:addItem(34109, 1) -- bag you desire, first kill only
+			killerPlayer:sendTextMessage(MESSAGE_EVENT_ADVANCE, "You have defeated Goshnar's Megalomania for the first time and received a Bag You Desire! Report the 'task' to Flickering Soul and earn your outfit.")
 		end
 	end
 	return true

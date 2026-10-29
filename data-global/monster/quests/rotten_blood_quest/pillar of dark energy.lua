@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("Pillar of Dark Energy")
+﻿local mType = Game.createMonsterType("Pillar of Dark Energy")
 local monster = {}
 
 monster.description = "a pillar of dark energy"
@@ -96,41 +96,5 @@ monster.immunities = {
 	{ type = "invisible", condition = true },
 	{ type = "bleed", condition = false },
 }
-
-local mushroomCheck = {}
-
-mType.onThink = function(monster, variant, interval)
-	local uid = monster:getId()
-	if not mushroomCheck[uid] then
-		mushroomCheck[uid] = 0
-	end
-
-	mushroomCheck[uid] = mushroomCheck[uid] + 1
-
-	if mushroomCheck[uid] >= 10 then
-		mushroomCheck[uid] = nil
-		monster:remove()
-		return
-	end
-
-	local monsterPos = monster:getPosition()
-	local spectators = Game.getSpectators(monsterPos, false, false, 15, 15, 15, 15)
-	local bossAlive = false
-
-	for _, creature in ipairs(spectators) do
-		if creature:isMonster() then
-			local name = creature:getName():lower()
-			if name == "vemiath" or name == "chagorz" or name == "bakragore" then
-				bossAlive = true
-				break
-			end
-		end
-	end
-
-	if not bossAlive then
-		mushroomCheck[uid] = nil
-		monster:remove()
-	end
-end
 
 mType:register(monster)

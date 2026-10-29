@@ -12,8 +12,10 @@ function thePrimalMenaceDeath.onDeath(creature)
 			player:setStorageValue(Storage.Quest.U12_90.PrimalOrdeal.Bosses.ThePrimalMenaceKilled, 1)
 		end
 
+		-- Each kill counts as double: unlock up to 2 hazard levels at once.
 		if hazard:getPlayerMaxLevel(player) == hazardPoints then
-			hazard:levelUp(player)
+			local newMax = math.min(hazardPoints + 2, hazard.maxLevel)
+			hazard:setPlayerMaxLevel(player, newMax)
 		end
 	end)
 end

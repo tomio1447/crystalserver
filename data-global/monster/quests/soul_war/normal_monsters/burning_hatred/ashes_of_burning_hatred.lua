@@ -27,9 +27,7 @@ monster.strategiesTarget = {
 	random = 100,
 }
 
-monster.events = {
-	"BurningChangeForm",
-}
+
 
 monster.flags = {
 	summonable = false,

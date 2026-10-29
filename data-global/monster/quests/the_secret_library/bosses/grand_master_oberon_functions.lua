@@ -37,7 +37,7 @@ GrandMasterOberonConfig = {
 		"Falcon Knight",
 		"Falcon Paladin",
 	},
-	AmountLife = 3,
+	AmountLife = 1,
 }
 
 local function healOberon(monster)

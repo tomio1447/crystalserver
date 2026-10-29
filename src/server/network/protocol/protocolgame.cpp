@@ -6702,11 +6702,12 @@ void ProtocolGame::sendForgingData() {
 		msg.addByte(classification->id);
 		msg.addByte(classification->tiers.size());
 		for (const auto &[tier, tierInfo] : classification->tiers) {
+			const bool warSystem = g_configManager().getBoolean(WAR_SYSTEM_ENABLED);
 			msg.addByte(tier - 1);
-			msg.add<uint64_t>(tierInfo.regularPrice);
-			tierCorePrices[tier] = tierInfo.corePrice;
-			convergenceFusionPrices[tier] = tierInfo.convergenceFusionPrice;
-			convergenceTransferPrices[tier] = tierInfo.convergenceTransferPrice;
+			msg.add<uint64_t>(warSystem ? (tierInfo.regularPrice + 1) / 2 : tierInfo.regularPrice);
+			tierCorePrices[tier] = warSystem ? (tierInfo.corePrice + 1) / 2 : tierInfo.corePrice;
+			convergenceFusionPrices[tier] = warSystem ? (tierInfo.convergenceFusionPrice + 1) / 2 : tierInfo.convergenceFusionPrice;
+			convergenceTransferPrices[tier] = warSystem ? (tierInfo.convergenceTransferPrice + 1) / 2 : tierInfo.convergenceTransferPrice;
 		}
 	}
 
@@ -9555,7 +9556,7 @@ void ProtocolGame::addImbuementInfo(NetworkMessage &msg, uint16_t imbuementId, b
 		msg.add<uint16_t>(1);
 	}
 
-	msg.add<uint32_t>(baseImbuement->price);
+	msg.add<uint32_t>(g_configManager().getBoolean(WAR_SYSTEM_ENABLED) ? 0 : baseImbuement->price);
 }
 
 void ProtocolGame::openImbuementWindow(const Imbuement_Window_t type, const std::shared_ptr<Item> &item /*= nullptr*/) {
@@ -9595,7 +9596,8 @@ void ProtocolGame::openImbuementWindow(const Imbuement_Window_t type, const std:
 			msg.addByte(0x01); // imbuement slot is occupied
 			addImbuementInfo(msg, imbuementInfo.imbuement->getID(), false);
 			msg.add<uint32_t>(imbuementInfo.duration);
-			msg.add<uint32_t>(g_imbuements().getBaseByID(imbuementInfo.imbuement->getBaseID())->removeCost);
+			const auto removeCost = g_imbuements().getBaseByID(imbuementInfo.imbuement->getBaseID())->removeCost;
+			msg.add<uint32_t>(g_configManager().getBoolean(WAR_SYSTEM_ENABLED) ? 0 : removeCost);
 		}
 
 		std::vector<Imbuement*> imbuements = g_imbuements().getImbuements(player, item);
@@ -10436,12 +10438,15 @@ double ProtocolGame::getForgeSkillStat(Slots_t slot, bool applyAmplification /*=
 		}
 	}
 
-	if (applyAmplification) {
+	if (applyAmplification && slot != CONST_SLOT_FEET) {
+		double amplification = player->getWarForgeChance();
 		const auto &boots = player->getInventoryItem(CONST_SLOT_FEET);
-		if (slot != CONST_SLOT_FEET && boots) {
-			skill *= 1 + (boots->getAmplificationChance() / 100);
+		if (boots) {
+			amplification += boots->getAmplificationChance();
 		}
+		skill *= 1 + amplification / 100;
 	}
+	skill += player->getWarForgeChance();
 
 	return skill / 100;
 }

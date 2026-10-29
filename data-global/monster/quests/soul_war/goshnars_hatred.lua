@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("Goshnar's Hatred")
+﻿local mType = Game.createMonsterType("Goshnar's Hatred")
 local monster = {}
 
 monster.description = "Goshnar's Hatred"
@@ -14,7 +14,6 @@ monster.outfit = {
 }
 
 monster.events = {
-	"GoshnarsHatredBuff",
 	"SoulWarBossesDeath",
 }
 

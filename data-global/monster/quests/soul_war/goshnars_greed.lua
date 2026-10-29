@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("Goshnar's Greed")
+﻿local mType = Game.createMonsterType("Goshnar's Greed")
 local monster = {}
 
 monster.description = "Goshnar's Greed"
@@ -135,70 +135,9 @@ monster.immunities = {
 	{ type = "bleed", condition = false },
 }
 
-local immuneTimeCount = 0
-local isImmune = nil
-local createdSoulSphere = nil
-
-mType.onThink = function(monsterCallback, interval)
-	if SoulSphereKills >= 1 then
-		SoulSphereKills = 0
-		if createdSoulSphere then
-			createdSoulSphere:remove()
-			createdSoulSphere = nil
-		end
-		monsterCallback:immune(false)
-		monsterCallback:teleportTo(Position(33746, 31666, 14))
-		monsterCallback:setSpeed(monster.speed)
-		isImmune = nil
-		immuneTimeCount = 0
-	end
-
-	if GreedbeastKills >= 5 then
-		GreedbeastKills = 0
-		isImmune = monsterCallback:immune(true)
-		monsterCallback:teleportTo(Position(33741, 31659, 14))
-		monsterCallback:setSpeed(0)
-		createdSoulSphere = Game.createMonster("Soul Sphere", Position(33752, 31659, 14), true, true)
-	end
-	if isImmune ~= nil then
-		immuneTimeCount = immuneTimeCount + interval
-		if createdSoulSphere then
-			if immuneTimeCount >= 34000 then
-				createdSoulSphere:remove()
-				createdSoulSphere = nil
-				monsterCallback:immune(false)
-				monsterCallback:teleportTo(Position(33746, 31666, 14))
-				monsterCallback:setSpeed(monster.speed)
-				isImmune = nil
-				immuneTimeCount = 0
-			end
-		end
-	end
-end
-
 mType.onSpawn = function(monster)
 	if monster:getType():isRewardBoss() then
 		monster:setReward(true)
-	end
-
-	isImmune = nil
-	monster:immune(true)
-	immuneTimeCount = 0
-	GreedbeastKills = 0
-	SoulSphereKills = 0
-end
-
-mType.onDisappear = function(monster, creature)
-	if creature:getName() == "Greedbeast" then
-		logger.debug("GreedbeastKills {}", GreedbeastKills)
-	end
-
-	if creature:getName() == "Goshnar's Greed" then
-		logger.debug("Killed goshnar's greed")
-		if createdSoulSphere then
-			logger.debug("Found soul sphere, remove it")
-			createdSoulSphere:remove()
-		end
 	end
 end
 

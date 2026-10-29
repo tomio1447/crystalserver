@@ -1,4 +1,4 @@
-local mType = Game.createMonsterType("Goshnar's Megalomania Purple")
+﻿local mType = Game.createMonsterType("Goshnar's Megalomania Purple")
 local monster = {}
 
 monster.name = "Goshnar's Megalomania"
@@ -27,7 +27,7 @@ monster.strategiesTarget = {
 }
 
 monster.events = {
-	"GoshnarsHatredBuff",
+	"MegalomaniaDeath",
 }
 
 monster.flags = {
@@ -68,7 +68,6 @@ monster.attacks = {
 	{ name = "combat", interval = 2000, chance = 30, type = COMBAT_DEATHDAMAGE, minDamage = -1050, maxDamage = -2020, length = 8, spread = 3, effect = CONST_ME_SMALLCLOUDS, target = false },
 	{ name = "combat", interval = 2000, chance = 30, type = COMBAT_DEATHDAMAGE, minDamage = -950, maxDamage = -1400, radius = 3, effect = CONST_ME_MORTAREA, target = true },
 	{ name = "soulwars fear", interval = 35000, chance = 100, target = true },
-	{ name = "megalomania transform elemental", interval = SoulWarQuest.goshnarsCrueltyWaveInterval * 1000, chance = 50 },
 	{ name = "combat", interval = 30000, chance = 100, type = COMBAT_LIFEDRAIN, minDamage = -1000, maxDamage = -1500, length = 8, radius = 5, spread = 0, effect = CONST_ME_PINK_ENERGY_SPARK, target = true },
 }
 
@@ -78,16 +77,16 @@ monster.defenses = {
 }
 
 monster.elements = {
-	{ type = COMBAT_PHYSICALDAMAGE, percent = 100 },
-	{ type = COMBAT_ENERGYDAMAGE, percent = 100 },
-	{ type = COMBAT_EARTHDAMAGE, percent = 100 },
-	{ type = COMBAT_FIREDAMAGE, percent = 100 },
-	{ type = COMBAT_LIFEDRAIN, percent = 100 },
-	{ type = COMBAT_MANADRAIN, percent = 100 },
-	{ type = COMBAT_DROWNDAMAGE, percent = 100 },
-	{ type = COMBAT_ICEDAMAGE, percent = 100 },
-	{ type = COMBAT_HOLYDAMAGE, percent = 100 },
-	{ type = COMBAT_DEATHDAMAGE, percent = 100 },
+	{ type = COMBAT_PHYSICALDAMAGE, percent = 0 },
+	{ type = COMBAT_ENERGYDAMAGE, percent = 0 },
+	{ type = COMBAT_EARTHDAMAGE, percent = 0 },
+	{ type = COMBAT_FIREDAMAGE, percent = 0 },
+	{ type = COMBAT_LIFEDRAIN, percent = 0 },
+	{ type = COMBAT_MANADRAIN, percent = 0 },
+	{ type = COMBAT_DROWNDAMAGE, percent = 0 },
+	{ type = COMBAT_ICEDAMAGE, percent = 0 },
+	{ type = COMBAT_HOLYDAMAGE, percent = 0 },
+	{ type = COMBAT_DEATHDAMAGE, percent = 0 },
 }
 
 monster.immunities = {
@@ -101,28 +100,6 @@ mType.onSpawn = function(monster)
 	if monster:getType():isRewardBoss() then
 		monster:setReward(true)
 	end
-
-	if SoulWarQuest.changeBlueEvent then
-		stopEvent(SoulWarQuest.changeBlueEvent)
-	end
-	if SoulWarQuest.changePurpleEvent then
-		stopEvent(SoulWarQuest.changePurpleEvent)
-	end
-
-	local bossKV = monster:getSoulWarKV()
-	bossKV:set("aspect-of-power-death-count", 0)
-	monster:resetHatredDamageMultiplier()
-end
-
-local intervalBetweenExecutions = 10000
-
-local zone = Zone.getByName("boss.goshnar's-megalomania-purple")
-local zonePositions = zone:getPositions()
-
-mType.onThink = function(monsterCallback, interval)
-	monsterCallback:onThinkGoshnarTormentCounter(interval, 36, intervalBetweenExecutions, SoulWarQuest.levers.goshnarsMegalomania.boss.position)
-	monsterCallback:onThinkMegalomaniaWhiteTiles(interval, zonePositions, 8000)
-	monsterCallback:goshnarsDefenseIncrease("cleansed-sanity-action")
 end
 
 mType:register(monster)

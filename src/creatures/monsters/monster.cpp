@@ -2524,6 +2524,9 @@ void Monster::updateLookDirection() {
 }
 
 void Monster::dropLoot(const std::shared_ptr<Container> &corpse, const std::shared_ptr<Creature> &) {
+	if (g_configManager().getBoolean(WAR_SYSTEM_ENABLED)) {
+		return;
+	}
 	if (corpse && lootDrop) {
 		// Only fiendish drops sliver
 		if (ForgeClassifications_t classification = getMonsterForgeClassification();
